@@ -17,11 +17,15 @@ import java.util.Set;
 
 /** Per-conversion image validation, embedding, and accounting. */
 public final class ImageEmbeddingSession {
+    private static final long REFERENCE_INSPECTION_LIMIT = 100L * 1_048_576L;
+    private static final int IMAGE_PREFIX_BYTES = 256;
     private final AssetResolver assets;
     private final List<Diagnostic> diagnostics;
     private final long maxAssetBytes;
+    private final String imageMode;
     private int occurrences;
     private int embeddedOccurrences;
+    private int referencedOccurrences;
     private long sourceBytes;
     private long payloadBytes;
     private final Set<String> unique = new HashSet<String>();
@@ -29,16 +33,23 @@ public final class ImageEmbeddingSession {
     private final Map<String, AssetInfo> infoByPath = new LinkedHashMap<String, AssetInfo>();
     private final Map<String, Long> lengthById = new HashMap<String, Long>();
     private final Map<String, byte[]> bytesById = new HashMap<String, byte[]>();
+    private final Map<String, String> referencesByPath = new HashMap<String, String>();
 
     public ImageEmbeddingSession(AssetResolver assets, List<Diagnostic> diagnostics, long maxAssetBytes) {
+        this(assets, diagnostics, maxAssetBytes, "embed");
+    }
+
+    public ImageEmbeddingSession(AssetResolver assets, List<Diagnostic> diagnostics, long maxAssetBytes, String imageMode) {
         this.assets = assets;
         this.diagnostics = diagnostics;
         this.maxAssetBytes = maxAssetBytes;
+        this.imageMode = imageMode;
     }
 
     public String renderImage(String altText, String destination, String title, int sourceLine, int sourceColumn) {
         occurrences++;
         String label = "markdown";
+        boolean localSource = false;
         SourcePosition position = new SourcePosition(Math.max(1, sourceLine), Math.max(1, sourceColumn));
         try {
             byte[] bytes;
@@ -51,6 +62,7 @@ public final class ImageEmbeddingSession {
                 expectedMime = data.mime;
                 id = "data:" + sha256(bytes);
             } else {
+                localSource = true;
                 if (trimmed.matches("(?is)^https?://.*") || trimmed.startsWith("//")) {
                     throw new AssetAccessException("E_REMOTE_IMAGE", "Remote images are not supported.");
                 }
@@ -58,31 +70,55 @@ public final class ImageEmbeddingSession {
                 if (assets == null) throw new AssetAccessException("E_ASSET_RESOLVER_REQUIRED", "A local image requires an asset resolver.");
                 AssetInfo info = infoByPath.get(path);
                 if (info == null) {
-                    info = assets.describe(path);
+                    try {
+                        info = assets.describe(path);
+                    } catch (AssetAccessException ex) {
+                        if (!"reference".equals(imageMode) || !warnLocalError(ex, path, "markdown", position)) throw ex;
+                        if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || path.toLowerCase(Locale.ROOT).endsWith(".svg")) {
+                            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                        }
+                        return makeReference(path, altText, position);
+                    }
                     if (info != null) infoByPath.put(path, info);
                 }
-                if (info == null || info.getId() == null || info.getByteLength() < 0) throw new AssetAccessException("E_IMAGE_READ", "Image resolver returned invalid metadata.");
+                if (info == null) throw new IllegalStateException("AssetResolver.describe returned invalid metadata.");
+                if (info.getId() == null || info.getByteLength() < 0) throw new IllegalStateException("AssetResolver.describe returned invalid metadata.");
                 id = info.getId();
-                Long previousLength = lengthById.get(id);
-                if (previousLength != null && previousLength.longValue() != info.getByteLength()) {
-                    throw new AssetAccessException("E_ASSET_CHANGED", "Image resolver returned inconsistent sizes for the same asset.");
-                }
-                lengthById.put(id, info.getByteLength());
                 label = info.getLabel() == null ? path : info.getLabel();
+                if (info.getId().isEmpty() || info.getLabel() == null || info.getByteLength() > 9_007_199_254_740_991L) {
+                    throw new IllegalStateException("AssetResolver.describe returned invalid metadata.");
+                }
+                Long knownSize = lengthById.get(id);
+                if (knownSize != null && knownSize.longValue() != info.getByteLength()) {
+                    throw new IllegalStateException("AssetResolver.describe returned inconsistent sizes for one asset id.");
+                }
+                if (knownSize == null) sourceBytes += info.getByteLength();
+                unique.add(id);
+                lengthById.put(id, info.getByteLength());
+                if ("reference".equals(imageMode)) return renderLocalReference(altText, path, info, label, position);
                 if (!bytesById.containsKey(id)) {
-                    bytes = assets.read(id, maxAssetBytes);
+                    try {
+                        bytes = assets.read(id, maxAssetBytes);
+                    } catch (AssetAccessException ex) {
+                        if (warnLocalError(ex, id, "markdown", position)) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                        throw ex;
+                    }
                     if (bytes == null || bytes.length != info.getByteLength()) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset size changed after inspection.");
                     bytesById.put(id, bytes);
                 } else bytes = bytesById.get(id);
             }
-            ImageInspector.Info info = ImageInspector.inspect(bytes, expectedMime);
+            final ImageInspector.Info info;
+            try {
+                info = ImageInspector.inspect(bytes, expectedMime);
+            } catch (AssetAccessException ex) {
+                if (localSource && warnLocalError(ex, id, "markdown", position)) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                throw ex;
+            }
             embeddedOccurrences++;
-            String actualId = expectedMime == null && id.startsWith("data:") ? "data:" + sha256(bytes) : id;
+            String actualId = expectedMime == null && id.startsWith("data:") ? "embedded:" + info.getMime() + ":" + sha256(bytes) : id;
             if (unique.add(actualId)) sourceBytes += bytes.length;
             payloadBytes += ((bytes.length + 2L) / 3L) * 4L;
-            if (bytes.length > 5L * 1_048_576L && warned.add(actualId + ":bytes")) {
-                Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE", "Image exceeds 5 MiB and is embedded at its original size.", label, position);
-            }
+            warnLarge(actualId, bytes.length, info.getWidth(), info.getHeight(), label, position, true);
             if (info.getWidth() > 0 && info.getHeight() > 0 && info.getWidth() > 40_000_000L / info.getHeight()
                     && warned.add(actualId + ":pixels")) {
                 java.util.Map<String, Object> dimensions = new java.util.LinkedHashMap<String, Object>();
@@ -96,14 +132,15 @@ public final class ImageEmbeddingSession {
             if (title != null && !title.isEmpty()) html.append("\" title=\"").append(HtmlEscape.attribute(title));
             return html.append("\">").toString();
         } catch (AssetAccessException ex) {
-            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), label, position);
+            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
     }
 
     public int getOccurrences() { return occurrences; }
     public int getEmbeddedOccurrences() { return embeddedOccurrences; }
-    public int getOmittedOccurrences() { return occurrences - embeddedOccurrences; }
+    public int getReferencedOccurrences() { return referencedOccurrences; }
+    public int getOmittedOccurrences() { return occurrences - embeddedOccurrences - referencedOccurrences; }
     public int getUniqueAssets() { return unique.size(); }
     public long getUniqueSourceAssetBytes() { return sourceBytes; }
     public long getEmbeddedPayloadBytes() { return payloadBytes; }
@@ -111,6 +148,197 @@ public final class ImageEmbeddingSession {
     private static final class DataImage {
         final String mime; final byte[] bytes;
         DataImage(String mime, byte[] bytes) { this.mime = mime; this.bytes = bytes; }
+    }
+
+    private String renderLocalReference(String altText, String path, AssetInfo metadata, String label, SourcePosition position) {
+        boolean svgHint = path.toLowerCase(Locale.ROOT).endsWith(".svg");
+        ImageInspector.Kind kind = new ImageInspector.Kind("unknown", null);
+        byte[] prefix = null;
+        try {
+            if (!(assets instanceof PrefixAssetResolver) && metadata.getByteLength() > REFERENCE_INSPECTION_LIMIT && !svgHint) {
+                warnInspection(metadata.getId(), metadata.getByteLength(), "Image exceeds the 100 MiB inspection limit and the resolver cannot read a bounded prefix.", position);
+                return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+            if (assets instanceof PrefixAssetResolver) {
+                prefix = ((PrefixAssetResolver) assets).readPrefix(metadata.getId(), IMAGE_PREFIX_BYTES);
+                int expected = (int) Math.min((long) IMAGE_PREFIX_BYTES, metadata.getByteLength());
+                if (prefix == null || prefix.length != expected) throw new IllegalStateException("AssetResolver.readPrefix must return exactly the requested prefix length.");
+            } else if (metadata.getByteLength() <= REFERENCE_INSPECTION_LIMIT) {
+                byte[] all = readAsset(metadata.getId(), REFERENCE_INSPECTION_LIMIT, metadata.getByteLength());
+                bytesById.put(metadata.getId(), all);
+                prefix = java.util.Arrays.copyOf(all, (int) Math.min((long) IMAGE_PREFIX_BYTES, all.length));
+            } else {
+                // SVG stays embedded, so its whole read is governed by the HTML output cap.
+                byte[] all = readAsset(metadata.getId(), maxAssetBytes, metadata.getByteLength());
+                bytesById.put(metadata.getId(), all);
+                prefix = java.util.Arrays.copyOf(all, (int) Math.min((long) IMAGE_PREFIX_BYTES, all.length));
+            }
+            kind = ImageInspector.sniffImageKind(prefix);
+        } catch (IllegalStateException ex) {
+            throw ex;
+        } catch (AssetAccessException ex) {
+            if (ex.getCode().startsWith("E_SVG_")) throw ex;
+            if ("E_OUTPUT_TOO_LARGE".equals(ex.getCode()) && metadata.getByteLength() > REFERENCE_INSPECTION_LIMIT && !svgHint) {
+                warnInspection(metadata.getId(), metadata.getByteLength(), "Image exceeds the 100 MiB inspection limit; its complete contents were not read.", position);
+                return kind.getKind().equals("raster") ? makeReference(path, altText, position) : HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+            if (warnLocalError(ex, metadata.getId(), label, position)) {
+                if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || svgHint) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                return makeReference(path, altText, position);
+            }
+            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+
+        if (kind.getKind().equals("raster") && metadata.getByteLength() > REFERENCE_INSPECTION_LIMIT) {
+            warnLarge(metadata.getId(), metadata.getByteLength(), 0L, 0L, "markdown", position, false);
+            warnInspection(metadata.getId(), metadata.getByteLength(), "Image exceeds the 100 MiB inspection limit; only its format header was checked.", position);
+            return makeReference(path, altText, position);
+        }
+        if (kind.getKind().equals("unknown") && metadata.getByteLength() > REFERENCE_INSPECTION_LIMIT && !svgHint) {
+            warnInspection(metadata.getId(), metadata.getByteLength(), "Image exceeds the 100 MiB inspection limit and its format could not be identified.", position);
+            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+
+        byte[] bytes;
+        boolean svgCandidate = "svg".equals(kind.getKind()) || svgHint;
+        long readLimit = svgCandidate ? maxAssetBytes : REFERENCE_INSPECTION_LIMIT;
+        try {
+            bytes = bytesById.get(metadata.getId());
+            if (bytes == null) {
+                bytes = readAsset(metadata.getId(), readLimit, metadata.getByteLength());
+                bytesById.put(metadata.getId(), bytes);
+            }
+        } catch (IllegalStateException ex) {
+            throw ex;
+        } catch (AssetAccessException ex) {
+            if (ex.getCode().startsWith("E_SVG_")) throw ex;
+            if ("E_OUTPUT_TOO_LARGE".equals(ex.getCode()) && !svgCandidate) {
+                warnInspection(metadata.getId(), metadata.getByteLength(), "Image exceeds the 100 MiB inspection limit; its complete contents were not read.", position);
+                return "raster".equals(kind.getKind()) ? makeReference(path, altText, position) : HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+            if (warnLocalError(ex, metadata.getId(), label, position)) {
+                if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || svgHint || "svg".equals(kind.getKind())) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                return makeReference(path, altText, position);
+            }
+            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+        if (bytes.length != metadata.getByteLength()) {
+            warnLocalError(new AssetAccessException("E_ASSET_CHANGED", "changed"), metadata.getId(), "markdown", position);
+            return (!svgHint && "raster".equals(kind.getKind())) ? makeReference(path, altText, position)
+                    : HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+
+        final ImageInspector.Info inspected;
+        try {
+            inspected = ImageInspector.inspect(bytes, null);
+        } catch (AssetAccessException ex) {
+            if (ex.getCode().startsWith("E_SVG_")) {
+                Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+                return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+            if (warnLocalError(ex, metadata.getId(), "markdown", position)) {
+                return ("raster".equals(kind.getKind()) || (!svgHint && "unknown".equals(kind.getKind())))
+                        ? makeReference(path, altText, position) : HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+        warnLarge(metadata.getId(), metadata.getByteLength(), inspected.getWidth(), inspected.getHeight(), "markdown", position, inspected.getMime().equals("image/svg+xml"));
+        if ("image/svg+xml".equals(inspected.getMime())) {
+            embeddedOccurrences++;
+            payloadBytes += ((bytes.length + 2L) / 3L) * 4L;
+            return imageHtml("data:image/svg+xml;base64," + Base64.getEncoder().encodeToString(bytes), altText, null);
+        }
+        return makeReference(path, altText, position);
+    }
+
+    private byte[] readAsset(String id, long limit, long expectedLength) {
+        byte[] bytes = bytesById.get(id);
+        if (bytes == null) bytes = assets.read(id, limit);
+        if (bytes == null) throw new IllegalStateException("AssetResolver.read must return bytes.");
+        if (bytes.length > limit) throw new AssetAccessException("E_OUTPUT_TOO_LARGE", "Image asset exceeded the bounded read limit.");
+        if (bytes.length != expectedLength) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset size changed after inspection.");
+        return bytes;
+    }
+
+    private String makeReference(String path, String altText, SourcePosition position) {
+        String href = referencesByPath.get(path);
+        if (href == null) {
+            try {
+                href = assets.reference(path);
+                if (href == null || !href.startsWith("./") && !href.startsWith("../") || href.matches("(?s).*[^\\x20-\\x7e].*")) {
+                    throw new IllegalStateException("AssetResolver.reference must return an encoded relative URL beginning with ./ or ../.");
+                }
+                decodeLocalPath(href);
+                referencesByPath.put(path, href);
+            } catch (IllegalStateException ex) {
+                throw ex;
+            } catch (AssetAccessException ex) {
+                if (warnLocalError(ex, path, "markdown", position)) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+                Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+                return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+            }
+        }
+        referencedOccurrences++;
+        return imageHtml(href, altText, null);
+    }
+
+    private String imageHtml(String src, String altText, String title) {
+        StringBuilder html = new StringBuilder("<img src=\"").append(HtmlEscape.attribute(src)).append("\" alt=\"")
+                .append(HtmlEscape.attribute(InlineMarkdownParser.plainText(altText))).append('"');
+        if (title != null && !title.isEmpty()) html.append(" title=\"").append(HtmlEscape.attribute(title)).append('"');
+        return html.append('>').toString();
+    }
+
+    private void warnLarge(String id, long bytes, long width, long height, String label, SourcePosition position, boolean embedded) {
+        if (bytes > 5L * 1_048_576L && warned.add(id + ":bytes")) {
+            Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE", embedded
+                    ? "Image exceeds 5 MiB and is embedded at its original size."
+                    : "Image exceeds 5 MiB and is referenced from its original file.", label, position,
+                    java.util.Collections.<String, Object>singletonMap("bytes", bytes));
+        }
+        if (width > 0 && height > 0 && width > 40_000_000L / height && warned.add(id + ":pixels")) {
+            java.util.Map<String, Object> details = new java.util.LinkedHashMap<String, Object>();
+            details.put("width", width); details.put("height", height);
+            Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, details);
+        }
+    }
+
+    private void warnInspection(String key, long bytes, String message, SourcePosition position) {
+        if (warned.add(key + ":inspection")) {
+            Diagnostics.add(diagnostics, "warning", "W_IMAGE_INSPECTION_SKIPPED", message, "markdown", position,
+                    java.util.Collections.<String, Object>singletonMap("bytes", bytes));
+        }
+    }
+
+    private boolean warnLocalError(AssetAccessException error, String key, String label, SourcePosition position) {
+        String code = mappedWarning(error.getCode());
+        if (code == null) return false;
+        if (warned.add(key + ":" + code)) {
+            String message;
+            if ("W_IMAGE_NOT_FOUND".equals(code)) message = "A referenced local image file was not found.";
+            else if ("W_IMAGE_READ".equals(code)) message = "A referenced local image file could not be read.";
+            else if ("W_IMAGE_FORMAT".equals(code)) message = "A local image has an unsupported or unrecognized format.";
+            else if ("W_IMAGE_INVALID".equals(code)) message = "A local image appears to be invalid or truncated.";
+            else if ("W_ASSET_OUTSIDE_ROOT".equals(code)) message = "A local image resolves outside the configured asset root and was omitted.";
+            else if ("W_ASSET_CHANGED".equals(code)) message = "A local image changed during inspection.";
+            else message = "A safe relative URL could not be created for a local image.";
+            Diagnostics.add(diagnostics, "warning", code, message, "markdown", position);
+        }
+        return true;
+    }
+
+    private static String mappedWarning(String code) {
+        if ("E_IMAGE_NOT_FOUND".equals(code)) return "W_IMAGE_NOT_FOUND";
+        if ("E_IMAGE_READ".equals(code)) return "W_IMAGE_READ";
+        if ("E_IMAGE_FORMAT".equals(code)) return "W_IMAGE_FORMAT";
+        if ("E_IMAGE_INVALID".equals(code)) return "W_IMAGE_INVALID";
+        if ("E_ASSET_OUTSIDE_ROOT".equals(code)) return "W_ASSET_OUTSIDE_ROOT";
+        if ("E_ASSET_CHANGED".equals(code)) return "W_ASSET_CHANGED";
+        if ("E_IMAGE_REFERENCE".equals(code)) return "W_IMAGE_REFERENCE";
+        return null;
     }
 
     private static DataImage decodeDataUri(String value) {

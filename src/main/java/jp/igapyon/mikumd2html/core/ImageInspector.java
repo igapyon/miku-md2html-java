@@ -37,6 +37,13 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /** Inspects supported raster and SVG formats; SVG CSS is parsed with the bundled ph-css dependency. */
 public final class ImageInspector {
+    public static final class Kind {
+        private final String kind;
+        private final String mime;
+        Kind(String kind, String mime) { this.kind = kind; this.mime = mime; }
+        public String getKind() { return kind; }
+        public String getMime() { return mime; }
+    }
     public static final class Info {
         private final String mime;
         private final long width;
@@ -65,6 +72,19 @@ public final class ImageInspector {
                     .split(" ")));
 
     private ImageInspector() { }
+
+    /** Identify an image from a bounded prefix without validating its full contents. */
+    public static Kind sniffImageKind(byte[] bytes) {
+        if (bytes == null) throw new IllegalArgumentException("Image prefix is required.");
+        String prefix = new String(bytes, 0, Math.min(bytes.length, 256), StandardCharsets.UTF_8).replaceFirst("^\\uFEFF", "").trim();
+        if (prefix.startsWith("<svg") || prefix.startsWith("<?xml") || prefix.startsWith("<!--")
+                || prefix.matches("(?is)^<!\\s*(?:doctype|entity).*$")) return new Kind("svg", "image/svg+xml");
+        if (starts(bytes, new int[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a })) return new Kind("raster", "image/png");
+        if (starts(bytes, new int[] { 0xff, 0xd8, 0xff })) return new Kind("raster", "image/jpeg");
+        if (bytes.length >= 6 && ascii(bytes, 0, 6).matches("GIF8[79]a")) return new Kind("raster", "image/gif");
+        if (bytes.length >= 12 && "RIFF".equals(ascii(bytes, 0, 4)) && "WEBP".equals(ascii(bytes, 8, 4))) return new Kind("raster", "image/webp");
+        return new Kind("unknown", null);
+    }
 
     public static Info inspect(byte[] bytes, String expectedMime) {
         if (bytes == null || bytes.length == 0) throw invalid("Image data is empty.");

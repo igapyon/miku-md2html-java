@@ -12,10 +12,17 @@ public final class CliOptions {
     public final long maxOutputBytes;
     public final Path reportJson;
     public final boolean force;
+    public final String imageMode;
 
     CliOptions(Path input, Path output, String title, String lang, Path assetRoot, boolean noToc,
             long maxOutputBytes, Path reportJson, boolean force) {
+        this(input, output, title, lang, assetRoot, noToc, maxOutputBytes, reportJson, force, "reference");
+    }
+
+    CliOptions(Path input, Path output, String title, String lang, Path assetRoot, boolean noToc,
+            long maxOutputBytes, Path reportJson, boolean force, String imageMode) {
         this.input = input; this.output = output; this.title = title; this.lang = lang; this.assetRoot = assetRoot;
         this.noToc = noToc; this.maxOutputBytes = maxOutputBytes; this.reportJson = reportJson; this.force = force;
+        this.imageMode = imageMode;
     }
 }

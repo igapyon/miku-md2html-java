@@ -1,0 +1,441 @@
+{
+  "upstream": {
+    "version": "0.5.0",
+    "commit": "c397569016383c622aae4b187234e56f08a753fd",
+    "runtime": "bundle/miku-md2html-runtime.mjs",
+    "runtimeSha256": "adb7dbad356ea6b78be15a4a6c1a1a7a53532d2cb52b272945becb092fc8d436",
+    "cli": "bundle/miku-md2html.mjs",
+    "cliSha256": "c5af81eccba1ecddc348533e40517a2dbcfa92af552b6d7a02616421fcbc9b78"
+  },
+  "cases": [
+    {
+      "id": "ref-png",
+      "markdownSha256": "48f4e202adcb8f8420784aaf55d7df7035d29ed54ae967c17e860670cb3c8069",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "ref-png.node.html",
+      "expectedHtmlSha256": "0b547a6ce79726a85477039226963be236efb45f2b68e2d7c985ffd34ae7c13a",
+      "expectedResult": "ref-png.node.json",
+      "expectedResultSha256": "926ed271a2d9a9bd6484efcf015e31bf5f61bc541f804b80767db24a347b7e16",
+      "contract": "ref-png.contract.properties",
+      "contractSha256": "8c4dea09a44a0333180ef5195046057e85b67e4661961206db6e0b7f8977dfaf",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-png",
+      "markdownSha256": "48f4e202adcb8f8420784aaf55d7df7035d29ed54ae967c17e860670cb3c8069",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "embed-png.node.html",
+      "expectedHtmlSha256": "426f7c261e5135257aca95aca35e3b528fe628739738a63a665c95b1941a83b6",
+      "expectedResult": "embed-png.node.json",
+      "expectedResultSha256": "94317d7c2babfcd508a90f49a33b87116e00edef945ca2a7ac25b32c287f7577",
+      "contract": "embed-png.contract.properties",
+      "contractSha256": "12a14b2f850e65f5e2cb487775e5fae5ab49fef0994dd27fcffbd242e88d5919",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-svg",
+      "markdownSha256": "74b3e2b8023c6864befb72598f581711294df6bce7ad3241f5972149805fa71e",
+      "scenarioAssetSha256": "bdfa924ed58e2b79b27bb3bee02568340ae588a5e527a8fb44251ad82a18fd6e",
+      "expectedHtml": "ref-svg.node.html",
+      "expectedHtmlSha256": "5e63734955619b8b13f41a4849c4d896f5ccddb592192370db90966011603b45",
+      "expectedResult": "ref-svg.node.json",
+      "expectedResultSha256": "fd7ec1d1435a72b5a920ac9fdc78b5c7a527f1ddb2822dba0a2bcfdf06a049a7",
+      "contract": "ref-svg.contract.properties",
+      "contractSha256": "746996956b1775a4f9d40672d42afcbc9ed43eff05725f9750c450b8e20bf0ca",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-svg",
+      "markdownSha256": "74b3e2b8023c6864befb72598f581711294df6bce7ad3241f5972149805fa71e",
+      "scenarioAssetSha256": "bdfa924ed58e2b79b27bb3bee02568340ae588a5e527a8fb44251ad82a18fd6e",
+      "expectedHtml": "embed-svg.node.html",
+      "expectedHtmlSha256": "5452b3a7360775a98375209a479f3b2605928e46e5d3566d8452a291a3e52e84",
+      "expectedResult": "embed-svg.node.json",
+      "expectedResultSha256": "50029af28d6ed442f265882f3599ed85e9ca4671a68df2d81991e1b8dedc107c",
+      "contract": "embed-svg.contract.properties",
+      "contractSha256": "d93530b727722006977289e18face799624ca94f23b0f31852ec0fce28720afe",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-svg-named-png",
+      "markdownSha256": "597e00f9d4588b7a290f713c8bc837fc5b7302aae341ddda41f57fc7639107a7",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "ref-svg-named-png.node.html",
+      "expectedHtmlSha256": "cbc3c6a10bd6ca0716841b4e4eab6069be806c0daddaf00ecb64df279e828495",
+      "expectedResult": "ref-svg-named-png.node.json",
+      "expectedResultSha256": "02aa9c9fe28fb7286c52deef76daf621ef5149015d2e321dc0db7b16668cf1c2",
+      "contract": "ref-svg-named-png.contract.properties",
+      "contractSha256": "d0d609525910afd28873eab4fbda47f316e76d3b4a24738737ae240a1da81409",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-svg-named-png",
+      "markdownSha256": "597e00f9d4588b7a290f713c8bc837fc5b7302aae341ddda41f57fc7639107a7",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "embed-svg-named-png.node.html",
+      "expectedHtmlSha256": "d790fd12a24ed18fc898c7d69ad3f705da6a2be5ea70041b133b0d8a724348ce",
+      "expectedResult": "embed-svg-named-png.node.json",
+      "expectedResultSha256": "1c4cd1f93fb4fef72824167261ad8f73f7017b6325f4ed0e66b14010074ee0fc",
+      "contract": "embed-svg-named-png.contract.properties",
+      "contractSha256": "932051c79b8883ccf90dfd72f2a4cec70a882f59fa8c4775bf6ada274ba7b163",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-data-png",
+      "markdownSha256": "466b52cc1fbc00563852bd3e91abdd05b6b1a00950ba4e41c741117c490a3945",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "ref-data-png.node.html",
+      "expectedHtmlSha256": "cf21492536f692b666b1643d0d616ade1046b21cd8445e11295b893fc4ac63c0",
+      "expectedResult": "ref-data-png.node.json",
+      "expectedResultSha256": "c0d1cec1abd5aa9891b5965f0c9dc7e3e47fbd42fa87874d4deea1082dc63cb4",
+      "contract": "ref-data-png.contract.properties",
+      "contractSha256": "7924bcd1f414dd9d436828dbc779f73e78a7e2f1697a7e0932f2784a536aa58b",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-data-png",
+      "markdownSha256": "466b52cc1fbc00563852bd3e91abdd05b6b1a00950ba4e41c741117c490a3945",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "embed-data-png.node.html",
+      "expectedHtmlSha256": "79662c96cdf2a050b31d1a6c60101bd1ba19f0bb22f9dd885a5ce9de7594f102",
+      "expectedResult": "embed-data-png.node.json",
+      "expectedResultSha256": "a609a5c686570329b2dd69be5491b412802b48824aee4ed8c7f566fa81b58f40",
+      "contract": "embed-data-png.contract.properties",
+      "contractSha256": "d9074608850832841e683d9f7d8e09f7798057af6bf1bba00e1327f67d662ba9",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-raw-img",
+      "markdownSha256": "1597e83673ca0c5d7ec8befec989a1d3fe972378ab746d6fe483f54282853303",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "ref-raw-img.node.html",
+      "expectedHtmlSha256": "f942fca43e0959fb393c3f04275ceed3283b204a99d664d139f3dfcb7a93db62",
+      "expectedResult": "ref-raw-img.node.json",
+      "expectedResultSha256": "13872e51ff2795ddb49d05c76de275b2207a1b09cae70d88e12f50dd01f0ef51",
+      "contract": "ref-raw-img.contract.properties",
+      "contractSha256": "d306ac18590048667ee25a33c97d6255e5316bd237a8272cbf964ef42bb1c457",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-raw-img",
+      "markdownSha256": "1597e83673ca0c5d7ec8befec989a1d3fe972378ab746d6fe483f54282853303",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "embed-raw-img.node.html",
+      "expectedHtmlSha256": "9856f77f5f1fd937ac2907c4c613748931e4d7e320b277bc3c993b99c4cd85d2",
+      "expectedResult": "embed-raw-img.node.json",
+      "expectedResultSha256": "0743897e1548cc894f28f7972151a77870987eac69f29007b799c878c1d9fe28",
+      "contract": "embed-raw-img.contract.properties",
+      "contractSha256": "4d6fba156d3b5b792a10f52294e35aa6428930fa3eec70dabaa14ede2dd8c279",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-missing-png",
+      "markdownSha256": "681e2be1f31b3f7fd802d285ea265f639c1d316fac868a5a11a14dde45e5f530",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "ref-missing-png.node.html",
+      "expectedHtmlSha256": "59d63b0b084e6c2e01cd20028e63717ca3730ca2a1ebd26733ff6ffcc77fb92f",
+      "expectedResult": "ref-missing-png.node.json",
+      "expectedResultSha256": "ee7f713aa89aa7e2506230e84fd1f21e26f0ded6532dc89c991bdc9dce0358f7",
+      "contract": "ref-missing-png.contract.properties",
+      "contractSha256": "7953ab5e7285886bf84009755e8ec43efb4b46a506b574a2081add76149901e1",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-missing-png",
+      "markdownSha256": "681e2be1f31b3f7fd802d285ea265f639c1d316fac868a5a11a14dde45e5f530",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "embed-missing-png.node.html",
+      "expectedHtmlSha256": "8e788d75209a892e6e05ed99f21800dbefd8af5196e3aec9832f9afb66ff977a",
+      "expectedResult": "embed-missing-png.node.json",
+      "expectedResultSha256": "83349b377562eee19611d2f01c2b57bd97f30b8a282aedf21aba26be56b16690",
+      "contract": "embed-missing-png.contract.properties",
+      "contractSha256": "fc68d289aa960261a55dad03cd99699556c65283d301bfb9f6455900837908df",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-missing-svg",
+      "markdownSha256": "9e963069d37435efef9baf942c47e33f4ad975f65f2c1a8b4fd42d9337ba0aa3",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "ref-missing-svg.node.html",
+      "expectedHtmlSha256": "d575b3e0703de75e2f3b13764c1a177a072cd007e511bc1f3144044a63208b9e",
+      "expectedResult": "ref-missing-svg.node.json",
+      "expectedResultSha256": "383a6b8c1fd670e4d299791bd074bb9ea7b2dda94fb2419fa1e1ca8a5afad8ba",
+      "contract": "ref-missing-svg.contract.properties",
+      "contractSha256": "9836667bf5c0de5739dd1a03c6fdf70a42e22c47d915fa2146e70adba601f6f4",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-missing-svg",
+      "markdownSha256": "9e963069d37435efef9baf942c47e33f4ad975f65f2c1a8b4fd42d9337ba0aa3",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "embed-missing-svg.node.html",
+      "expectedHtmlSha256": "0df7cc8adba5889d6bb164803d5387d0f6628f5452b02b44e8ca98f92cf8c40b",
+      "expectedResult": "embed-missing-svg.node.json",
+      "expectedResultSha256": "6a99f602d4cce938ded9c0538bb8a7328be15e5b68e25bfabad84f69a1af9b65",
+      "contract": "embed-missing-svg.contract.properties",
+      "contractSha256": "6848a6fa1a4cea9cf671faf4d1eabd0fdd5e56ebf58579df81f27bbc5b19c4ba",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-invalid-png",
+      "markdownSha256": "5afc4506183e0a1c6a51f74f64f275425d0f3862ee2f2dfe1f5fb150dcb85947",
+      "scenarioAssetSha256": "2aade9c49b9414c70f452b226271ef5066e2894cdd0557f54857819fb7bcc782",
+      "expectedHtml": "ref-invalid-png.node.html",
+      "expectedHtmlSha256": "fcf76d7ae79bf65483c1aa40a93a93dd5bf587210d8684339ddf9ccf2f19f249",
+      "expectedResult": "ref-invalid-png.node.json",
+      "expectedResultSha256": "c4323506986eedc255ffad7bdfe87b6d50c2ab42e2f629f2fea274ab9bd80d16",
+      "contract": "ref-invalid-png.contract.properties",
+      "contractSha256": "63d79df317913fdac6222518e342c264e4da6c8c3413812f7f28027d9a76afe2",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-invalid-png",
+      "markdownSha256": "5afc4506183e0a1c6a51f74f64f275425d0f3862ee2f2dfe1f5fb150dcb85947",
+      "scenarioAssetSha256": "2aade9c49b9414c70f452b226271ef5066e2894cdd0557f54857819fb7bcc782",
+      "expectedHtml": "embed-invalid-png.node.html",
+      "expectedHtmlSha256": "969796554b2eaf586c512faa15eb2e3112c1f4de714a5ff384da78eedf5a472f",
+      "expectedResult": "embed-invalid-png.node.json",
+      "expectedResultSha256": "15516400a5c8754468bde4b3320fec2da5239406afb15a4bf1e77a1a2ba8cc1e",
+      "contract": "embed-invalid-png.contract.properties",
+      "contractSha256": "5ee61670512532561dc88873171116b422305e0c34cc0c97d1ccc16585b35f57",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-outside",
+      "markdownSha256": "62d71a16b82b7c7033bfe9866d31ebfbf8e03b2c47c9b5daa357b44edc810f00",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "ref-outside.node.html",
+      "expectedHtmlSha256": "4ca3a606e65b2ae49a630c73cc3fe7ab3861b2a6ccee3803d7e1d819e10d78ff",
+      "expectedResult": "ref-outside.node.json",
+      "expectedResultSha256": "1569ea1ade1156073993612a6e2aa7f120302a283380088908b77af7265ef4cf",
+      "contract": "ref-outside.contract.properties",
+      "contractSha256": "cdf23a4da52d445ca6e0691cb6aede0ea798503ad8504d946ef1ed8a8941a084",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-outside",
+      "markdownSha256": "62d71a16b82b7c7033bfe9866d31ebfbf8e03b2c47c9b5daa357b44edc810f00",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "embed-outside.node.html",
+      "expectedHtmlSha256": "fb3e1236703865385c4bb9ed1f66efce06fa2e68ed4821441653a934bf155e37",
+      "expectedResult": "embed-outside.node.json",
+      "expectedResultSha256": "921d0eead886b42435e20471a01aaaf38217690434646a314a944bc47ce57baa",
+      "contract": "embed-outside.contract.properties",
+      "contractSha256": "4346b61c1f40914f5cee9a7d320ab064039e3bf6d843d4762d0869d2bb421127",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-remote",
+      "markdownSha256": "07c3f59e511c43cca023ace45e6270710545807cffaa6d08ac1e220b318e4e0b",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "ref-remote.node.html",
+      "expectedHtmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expectedResult": "ref-remote.node.json",
+      "expectedResultSha256": "42a198f2c495155799260ca4acc4cc75a299ebf7d5a54b39f9b27a40a541bf77",
+      "contract": "ref-remote.contract.properties",
+      "contractSha256": "bb8a9a42e510bf24d3d164549354cd5506fc2a8b0a59fed920fa4119e5257db2",
+      "success": false,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-remote",
+      "markdownSha256": "07c3f59e511c43cca023ace45e6270710545807cffaa6d08ac1e220b318e4e0b",
+      "scenarioAssetSha256": null,
+      "expectedHtml": "embed-remote.node.html",
+      "expectedHtmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expectedResult": "embed-remote.node.json",
+      "expectedResultSha256": "5667d01bf471c10d0f82a9b48fd2ed7da323fb7145c93240f6f52a9924b5c458",
+      "contract": "embed-remote.contract.properties",
+      "contractSha256": "d2c6726f91c4cd3f838023be810a2aae9dabbc9cb7f56392d677fda951ad85b0",
+      "success": false,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-unsafe-svg",
+      "markdownSha256": "e4e2b96bbe92d0f7e94b00d14b58797a0ce872931d97f531cb469f308235bf68",
+      "scenarioAssetSha256": "c9819460be0f15eee61096256fbcbde02fa806312fa90aaeccbee0073c08bff3",
+      "expectedHtml": "ref-unsafe-svg.node.html",
+      "expectedHtmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expectedResult": "ref-unsafe-svg.node.json",
+      "expectedResultSha256": "5ab69309739c5b48dfe0e2a0950f8bf83e9693630a9037c2eddee7a64fdbb24e",
+      "contract": "ref-unsafe-svg.contract.properties",
+      "contractSha256": "2ea5c495a06353dd0c7ea73c910b69ceeaf518c3c546b2b970628d2d192a7484",
+      "success": false,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-unsafe-svg",
+      "markdownSha256": "e4e2b96bbe92d0f7e94b00d14b58797a0ce872931d97f531cb469f308235bf68",
+      "scenarioAssetSha256": "c9819460be0f15eee61096256fbcbde02fa806312fa90aaeccbee0073c08bff3",
+      "expectedHtml": "embed-unsafe-svg.node.html",
+      "expectedHtmlSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expectedResult": "embed-unsafe-svg.node.json",
+      "expectedResultSha256": "2557994ad06f2003f2fd5d799697a93b8cb812add8223dab77c7c0b04379218d",
+      "contract": "embed-unsafe-svg.contract.properties",
+      "contractSha256": "c211f040435f73d2c99285b9fbfa1fa3d267f17cc9cddf18d16bab42cc398731",
+      "success": false,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-repeated-alias",
+      "markdownSha256": "0542c9b11e027b32e8cc26ad0190b96fb5a9b6c2a7e984bd9734a949308f0947",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "ref-repeated-alias.node.html",
+      "expectedHtmlSha256": "47544c33d5a9e5af732ff2e7a7861ea28565a9947238d5061a08667a92d24967",
+      "expectedResult": "ref-repeated-alias.node.json",
+      "expectedResultSha256": "a499b18daf9a7a02aa7e90d8c4a0ea5638a492171a4e2693ff6d2f020ed4b148",
+      "contract": "ref-repeated-alias.contract.properties",
+      "contractSha256": "fc44590fded589503e3f163bd933ed4c831b872bfcc370a987dcc59e2ba2117b",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "embed-repeated-alias",
+      "markdownSha256": "0542c9b11e027b32e8cc26ad0190b96fb5a9b6c2a7e984bd9734a949308f0947",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "embed-repeated-alias.node.html",
+      "expectedHtmlSha256": "31649863bbe73a7658cd8e6c8cfc551044a2548f8c11ff1fbf923b4eeb36c702",
+      "expectedResult": "embed-repeated-alias.node.json",
+      "expectedResultSha256": "24766b727633e4508fa87d34a3739f0f74cf347efd15bccdb3b98e195ffcf2c1",
+      "contract": "embed-repeated-alias.contract.properties",
+      "contractSha256": "d4834652406e930086d3e4a0ae15409a1cdb0a63ee4a615f567a6f6ff5a45304",
+      "success": true,
+      "scope": [
+        "core",
+        "cli"
+      ]
+    },
+    {
+      "id": "ref-no-reference",
+      "markdownSha256": "48f4e202adcb8f8420784aaf55d7df7035d29ed54ae967c17e860670cb3c8069",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "ref-no-reference.node.html",
+      "expectedHtmlSha256": "aa345a3fe137da058d8cde641be1127b48a36bff4545cb93d60754ba9bd05280",
+      "expectedResult": "ref-no-reference.node.json",
+      "expectedResultSha256": "ee5bb521c4c9c13d386706a4b8a83e940b47466ca5cb5b81d2139c3d7faf8da3",
+      "contract": "ref-no-reference.contract.properties",
+      "contractSha256": "d300d9753c2bb119e51d540a6748ded0008a0f855996f21e1158097191174fd7",
+      "success": true,
+      "scope": [
+        "core"
+      ]
+    },
+    {
+      "id": "embed-old-resolver",
+      "markdownSha256": "48f4e202adcb8f8420784aaf55d7df7035d29ed54ae967c17e860670cb3c8069",
+      "scenarioAssetSha256": "6eb46b5a8758eec70c0af6a4891cf052daec088c431087fe0bc9c69cb96f8bc8",
+      "expectedHtml": "embed-old-resolver.node.html",
+      "expectedHtmlSha256": "ced1019123e3a1deaab0a0545120cda679e4d1f95f8ed410094d8732f0ed6305",
+      "expectedResult": "embed-old-resolver.node.json",
+      "expectedResultSha256": "823f0f9978fc234a62d1c1b165aa7d37ca492f68ff6ea08aa3353a5bbe19ab08",
+      "contract": "embed-old-resolver.contract.properties",
+      "contractSha256": "7369a88a8abf348c14aed0d05152e380ef982813636dc7944f7f4e202c99e19f",
+      "success": true,
+      "scope": [
+        "core"
+      ]
+    },
+    {
+      "id": "ref-svg-old-resolver",
+      "markdownSha256": "74b3e2b8023c6864befb72598f581711294df6bce7ad3241f5972149805fa71e",
+      "scenarioAssetSha256": "bdfa924ed58e2b79b27bb3bee02568340ae588a5e527a8fb44251ad82a18fd6e",
+      "expectedHtml": "ref-svg-old-resolver.node.html",
+      "expectedHtmlSha256": "fcb79aabad453439fed8a0ed20fc4585fa4195a5505587fc37b42b3cd949577b",
+      "expectedResult": "ref-svg-old-resolver.node.json",
+      "expectedResultSha256": "09acfe8f0b0b20e7dad14dd3bc33bca334b85c6b1c34fd96a406c5550d3f2ec0",
+      "contract": "ref-svg-old-resolver.contract.properties",
+      "contractSha256": "5ed954199a909a26ac53e70f458ac819d80d3c6505e1051e329c254959d790a7",
+      "success": true,
+      "scope": [
+        "core"
+      ]
+    }
+  ]
+}

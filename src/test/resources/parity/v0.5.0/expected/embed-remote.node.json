@@ -1,0 +1,35 @@
+{
+  "success": false,
+  "metadata": {
+    "title": "embed-remote",
+    "lang": "ja"
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "E_REMOTE_IMAGE",
+      "message": "Remote images are not supported.",
+      "source": {
+        "label": "markdown",
+        "start": {
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "line": 1,
+          "column": 41
+        }
+      }
+    }
+  ],
+  "stats": {
+    "headingCount": 0,
+    "imageOccurrences": 1,
+    "uniqueAssets": 0,
+    "uniqueSourceAssetBytes": 0,
+    "embeddedPayloadBytes": 0,
+    "embeddedImageOccurrences": 0,
+    "referencedImageOccurrences": 0,
+    "omittedImageOccurrences": 1
+  }
+}

@@ -246,8 +246,13 @@ public final class FlexmarkAdapter {
         String title = element.hasAttr("title") ? element.attr("title") : null;
         String imageHtml = images.renderImage(alt, src, title, line(sourcePosition(element)), column(sourcePosition(element)));
         List<org.jsoup.nodes.Node> replacement = org.jsoup.parser.Parser.parseFragment(imageHtml, element.parent(), "");
-        if (replacement.isEmpty()) element.remove();
-        else element.replaceWith(replacement.get(0));
+        if (replacement.isEmpty() || !(replacement.get(0) instanceof Element)) {
+            element.removeAttr("src");
+            return;
+        }
+        Element rendered = (Element) replacement.get(0);
+        if (rendered.hasAttr("src")) element.attr("src", rendered.attr("src"));
+        else element.removeAttr("src");
     }
 
     private void replaceInlineSvg(Element svg) {

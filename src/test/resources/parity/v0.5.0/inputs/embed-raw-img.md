@@ -1,0 +1,1 @@
+<img src="pixel.png" alt="画素" title="tiny" width="1" height="1">

@@ -12,12 +12,17 @@ public final class HtmlDocumentRenderer {
     private static final String ASSET_ROOT = "/jp/igapyon/mikumd2html/viewer/";
 
     public String render(String articleHtml, String toc, String title, String lang, String description) {
+        return render(articleHtml, toc, title, lang, description, "embed");
+    }
+
+    public String render(String articleHtml, String toc, String title, String lang, String description, String imageMode) {
         String css = readResource("theme.css").trim();
         String script = "\n" + readResource("viewer.js").trim() + "\n";
         css = css.replaceAll("(?i)</style", "<\\\\/style");
         script = script.replaceAll("(?i)</script", "<\\\\/script");
         String hash = sha256(script);
-        String csp = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'sha256-"
+        String imagePolicy = "reference".equals(imageMode) ? "img-src data: file: 'self'; " : "img-src data:; ";
+        String csp = "default-src 'none'; " + imagePolicy + "style-src 'unsafe-inline'; script-src 'sha256-"
                 + hash + "'; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html>\n<html lang=\"").append(HtmlEscape.attribute(lang)).append("\">\n<head>\n")
