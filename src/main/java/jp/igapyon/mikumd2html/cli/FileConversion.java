@@ -19,6 +19,7 @@ import jp.igapyon.mikumd2html.adapters.LocalAssetResolver;
 import jp.igapyon.mikumd2html.core.AssetAccessException;
 import jp.igapyon.mikumd2html.core.ConvertOptions;
 import jp.igapyon.mikumd2html.core.ConvertResult;
+import jp.igapyon.mikumd2html.core.ConversionStats;
 import jp.igapyon.mikumd2html.core.Diagnostic;
 import jp.igapyon.mikumd2html.core.MikuMd2htmlCore;
 import jp.igapyon.mikumd2html.core.MikuMd2htmlMetadata;
@@ -26,31 +27,49 @@ import jp.igapyon.mikumd2html.core.SourcePosition;
 
 /** File and publication adapter; the conversion pipeline remains usable without this CLI. */
 public final class FileConversion {
+    interface OutputFileOperations {
+        Path stage(Path target, byte[] bytes, String code);
+        void commit(Path staged, Path target, boolean force, String code);
+        void cleanup(Path staged);
+    }
+
+    private static final OutputFileOperations FILE_OPERATIONS = new OutputFileOperations() {
+        @Override public Path stage(Path target, byte[] bytes, String code) { return stageFile(target, bytes, code); }
+        @Override public void commit(Path staged, Path target, boolean force, String code) { commitStage(staged, target, force, code); }
+        @Override public void cleanup(Path staged) { cleanupStage(staged); }
+    };
+
     private FileConversion() { }
 
     public static int run(CliOptions cli, java.io.PrintStream out, java.io.PrintStream err) {
+        return run(cli, out, err, FILE_OPERATIONS);
+    }
+
+    static int run(CliOptions cli, java.io.PrintStream out, java.io.PrintStream err, OutputFileOperations fileOperations) {
         List<Diagnostic> diagnostics = new ArrayList<Diagnostic>();
         ConvertResult result = null;
-        int inputBytes = 0;
+        Integer inputBytes = null;
         Path inputReal = null;
         Path outputTarget = null;
         Path reportTarget = null;
+        Path outputStage = null;
+        Path reportStage = null;
         LocalAssetResolver assets = null;
         boolean reportWritable = false;
         try {
-            inputReal = cli.input.toAbsolutePath().normalize().toRealPath();
-            BasicFileAttributes inputAttrs = Files.readAttributes(inputReal, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-            if (!inputAttrs.isRegularFile()) throw new AssetAccessException("E_INPUT_READ", "Input is not a regular file: " + cli.input);
             outputTarget = canonicalTarget(cli.output);
             validateTarget(outputTarget, cli.force, "HTML");
-            if (samePath(inputReal, outputTarget)) throw new AssetAccessException("E_OUTPUT_COLLISION", "HTML output must not overwrite the Markdown input.");
             if (cli.reportJson != null) {
                 reportTarget = canonicalTarget(cli.reportJson);
                 validateTarget(reportTarget, cli.force, "JSON report");
-                if (samePath(inputReal, reportTarget)) throw new AssetAccessException("E_OUTPUT_COLLISION", "JSON report must not overwrite the Markdown input.");
                 if (samePath(outputTarget, reportTarget)) throw new AssetAccessException("E_OUTPUT_COLLISION", "HTML and report paths must be different files.");
                 reportWritable = true;
             }
+            inputReal = cli.input.toAbsolutePath().normalize().toRealPath();
+            BasicFileAttributes inputAttrs = Files.readAttributes(inputReal, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            if (!inputAttrs.isRegularFile()) throw new AssetAccessException("E_INPUT_READ", "Input is not a regular file: " + cli.input);
+            if (samePath(inputReal, outputTarget)) throw new AssetAccessException("E_OUTPUT_COLLISION", "HTML output must not overwrite the Markdown input.");
+            if (reportTarget != null && samePath(inputReal, reportTarget)) throw new AssetAccessException("E_OUTPUT_COLLISION", "JSON report must not overwrite the Markdown input.");
             byte[] input = readBounded(inputReal, cli.maxOutputBytes);
             inputBytes = input.length;
             String markdown = decodeUtf8(input);
@@ -69,17 +88,17 @@ public final class FileConversion {
                 if (reportTarget != null) writeReport(reportTarget, reportJson(cli, false, 1, inputBytes, result, diagnostics, false), cli.force, err);
                 return 1;
             }
-            try {
-                writeAtomic(outputTarget, result.getHtml().getBytes(StandardCharsets.UTF_8), cli.force);
-            } catch (AssetAccessException ex) {
-                throw ex;
-            } catch (IOException ex) {
-                throw new AssetAccessException("E_OUTPUT_WRITE", "HTML output could not be saved: " + safeMessage(ex), ex);
-            }
+            outputStage = fileOperations.stage(outputTarget, result.getHtml().getBytes(StandardCharsets.UTF_8), "E_OUTPUT_WRITE");
             if (reportTarget != null) {
+                reportStage = fileOperations.stage(reportTarget,
+                        reportJson(cli, true, 0, inputBytes, result, diagnostics, true).getBytes(StandardCharsets.UTF_8),
+                        "E_REPORT_WRITE");
+            }
+            fileOperations.commit(outputStage, outputTarget, cli.force, "E_OUTPUT_WRITE");
+            if (reportStage != null) {
                 try {
-                    writeAtomic(reportTarget, reportJson(cli, true, 0, inputBytes, result, diagnostics, true).getBytes(StandardCharsets.UTF_8), cli.force);
-                } catch (Exception ex) {
+                    fileOperations.commit(reportStage, reportTarget, cli.force, "E_REPORT_WRITE");
+                } catch (AssetAccessException ex) {
                     err.println("error E_REPORT_WRITE HTML was saved to " + cli.output + "; the JSON report could not be saved: " + safeMessage(ex));
                     printDiagnostics(diagnostics, err);
                     return 1;
@@ -97,13 +116,15 @@ public final class FileConversion {
             diagnostics.add(new Diagnostic("error", "E_INPUT_READ", "Input or output file could not be read or written: " + safeMessage(ex), cli.input.toString(), null, null));
         } catch (Exception ex) {
             diagnostics.add(new Diagnostic("error", "E_INTERNAL", "Unexpected internal error.", null, null, null));
-            printDiagnostics(diagnostics, err);
-            return 3;
+        } finally {
+            fileOperations.cleanup(outputStage);
+            fileOperations.cleanup(reportStage);
         }
         printDiagnostics(diagnostics, err);
+        int failureExitCode = hasDiagnostic(diagnostics, "E_INTERNAL") ? 3 : 1;
         if (reportWritable && reportTarget != null && !hasDiagnostic(diagnostics, "E_OUTPUT_COLLISION"))
-            writeReport(reportTarget, reportJson(cli, false, 1, inputBytes, result, diagnostics, false), cli.force, err);
-        return 1;
+            writeReport(reportTarget, reportJson(cli, false, failureExitCode, inputBytes, result, diagnostics, false), cli.force, err);
+        return failureExitCode;
     }
 
     private static byte[] readBounded(Path path, long maxBytes) throws IOException {
@@ -157,23 +178,59 @@ public final class FileConversion {
     }
 
     private static void writeAtomic(Path target, byte[] bytes, boolean force) throws IOException {
-        Path temp = Files.createTempFile(target.getParent(), ".miku-md2html-", ".tmp");
+        Path temp = stageFile(target, bytes, "E_REPORT_WRITE");
         try {
+            commitStage(temp, target, force, "E_REPORT_WRITE");
+        } finally { cleanupStage(temp); }
+    }
+
+    private static Path stageFile(Path target, byte[] bytes, String code) {
+        Path temp = null;
+        try {
+            temp = Files.createTempFile(target.getParent(), ".miku-md2html-", ".tmp");
             Files.write(temp, bytes);
-            if (force) moveReplacing(temp, target);
-            else {
-                try {
-                    Files.createLink(target, temp);
-                    Files.delete(temp);
-                } catch (UnsupportedOperationException ex) {
-                    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) throw new AssetAccessException("E_OUTPUT_EXISTS", "Output already exists.", ex);
-                    Files.move(temp, target);
-                } catch (IOException ex) {
-                    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) throw new AssetAccessException("E_OUTPUT_EXISTS", "Output already exists; use --force to replace it.", ex);
-                    Files.move(temp, target);
-                }
+            return temp;
+        } catch (IOException ex) {
+            cleanupStage(temp);
+            String label = "E_OUTPUT_WRITE".equals(code) ? "HTML output" : "JSON report";
+            throw new AssetAccessException(code, label + " could not be staged: " + safeMessage(ex), ex);
+        }
+    }
+
+    private static void commitStage(Path temp, Path target, boolean force, String code) {
+        try {
+            if (force) {
+                moveReplacing(temp, target);
+                return;
             }
-        } finally { Files.deleteIfExists(temp); }
+            try {
+                Files.createLink(target, temp);
+            } catch (UnsupportedOperationException ex) {
+                if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) throw outputExists(code, ex);
+                Files.move(temp, target);
+            } catch (java.nio.file.FileAlreadyExistsException ex) {
+                throw outputExists(code, ex);
+            } catch (IOException linkFailure) {
+                if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) throw outputExists(code, linkFailure);
+                Files.move(temp, target);
+            }
+        } catch (AssetAccessException ex) {
+            throw ex;
+        } catch (IOException ex) {
+            throw new AssetAccessException(code, "Staged output could not be committed: " + safeMessage(ex), ex);
+        }
+    }
+
+    private static AssetAccessException outputExists(String code, Exception cause) {
+        String message = "E_REPORT_WRITE".equals(code)
+                ? "JSON report already exists; use --force to replace it."
+                : "Output already exists; use --force to replace it.";
+        return new AssetAccessException("E_OUTPUT_EXISTS", message, cause);
+    }
+
+    private static void cleanupStage(Path temp) {
+        if (temp == null) return;
+        try { Files.deleteIfExists(temp); } catch (IOException ignored) { }
     }
 
     private static void moveReplacing(Path from, Path to) throws IOException {
@@ -194,30 +251,72 @@ public final class FileConversion {
         }
     }
 
-    private static String reportJson(CliOptions cli, boolean success, int exitCode, int inputBytes, ConvertResult result,
+    private static String reportJson(CliOptions cli, boolean success, int exitCode, Integer inputBytes, ConvertResult result,
             List<Diagnostic> diagnostics, boolean outputWritten) {
-        StringBuilder json = new StringBuilder("{\n  \"schemaVersion\": \"1\",\n  \"tool\": {\"name\": \"")
+        StringBuilder json = new StringBuilder("{\n  \"schemaVersion\": \"2\",\n  \"tool\": {\"name\": \"")
                 .append(MikuMd2htmlMetadata.PRODUCT_NAME).append("\", \"version\": \"").append(MikuMd2htmlMetadata.VERSION)
                 .append("\"},\n  \"success\": ").append(success).append(",\n  \"exitCode\": ").append(exitCode)
-                .append(",\n  \"input\": {\"path\": \"").append(jsonEscape(cli.input.toString())).append("\", \"bytes\": ").append(inputBytes)
-                .append("},\n  \"output\": {\"path\": \"").append(jsonEscape(cli.output.toString())).append("\", \"written\": ").append(outputWritten);
+                .append(",\n  \"input\": {\"path\": \"").append(jsonEscape(cli.input.toString())).append('"');
+        if (inputBytes != null) json.append(", \"bytes\": ").append(inputBytes.intValue());
+        json.append("},\n  \"output\": {\"path\": \"").append(jsonEscape(cli.output.toString()))
+                .append("\", \"imageMode\": \"embed\", \"written\": ").append(outputWritten);
         if (outputWritten && result != null) json.append(", \"bytes\": ").append(result.getStats().getHtmlBytes());
         json.append("},\n  \"metadata\": {\"title\": \"").append(jsonEscape(result == null ? (cli.title == null ? "Untitled" : cli.title) : result.getTitle()))
-                .append("\", \"lang\": \"").append(jsonEscape(result == null ? (cli.lang == null ? "ja" : cli.lang) : result.getLang())).append("\"},\n  \"stats\": {");
-        if (result == null) json.append("\"headingCount\":0,\"imageOccurrences\":0,\"uniqueAssets\":0,\"uniqueSourceAssetBytes\":0,\"embeddedPayloadBytes\":0,\"htmlBytes\":0");
-        else json.append("\"headingCount\":").append(result.getStats().getHeadingCount()).append(",\"imageOccurrences\":").append(result.getStats().getImageOccurrences())
-                .append(",\"uniqueAssets\":").append(result.getStats().getUniqueAssets()).append(",\"uniqueSourceAssetBytes\":").append(result.getStats().getUniqueSourceAssetBytes())
-                .append(",\"embeddedPayloadBytes\":").append(result.getStats().getEmbeddedPayloadBytes()).append(",\"htmlBytes\":").append(result.getStats().getHtmlBytes());
+                .append("\", \"lang\": \"").append(jsonEscape(result == null ? (cli.lang == null ? "ja" : cli.lang) : result.getLang())).append('"');
+        String description = result == null ? null : result.getDescription();
+        if (description != null) json.append(", \"description\": \"").append(jsonEscape(description)).append('"');
+        json.append("},\n  \"stats\": {");
+        if (result == null) {
+            json.append("\"headingCount\":0,\"imageOccurrences\":0,\"uniqueAssets\":0,\"uniqueSourceAssetBytes\":0,\"embeddedPayloadBytes\":0,\"embeddedImageOccurrences\":0,\"referencedImageOccurrences\":0,\"omittedImageOccurrences\":0");
+        } else {
+            ConversionStats stats = result.getStats();
+            json.append("\"headingCount\":").append(stats.getHeadingCount()).append(",\"imageOccurrences\":").append(stats.getImageOccurrences())
+                    .append(",\"uniqueAssets\":").append(stats.getUniqueAssets()).append(",\"uniqueSourceAssetBytes\":").append(stats.getUniqueSourceAssetBytes())
+                    .append(",\"embeddedPayloadBytes\":").append(stats.getEmbeddedPayloadBytes())
+                    .append(",\"embeddedImageOccurrences\":").append(stats.getEmbeddedImageOccurrences())
+                    .append(",\"referencedImageOccurrences\":").append(stats.getReferencedImageOccurrences())
+                    .append(",\"omittedImageOccurrences\":").append(stats.getOmittedImageOccurrences());
+            if (result.isSuccess()) json.append(",\"htmlBytes\":").append(stats.getHtmlBytes());
+        }
         json.append("},\n  \"diagnostics\": [");
-        for (int i = 0; i < diagnostics.size(); i++) {
-            Diagnostic d = diagnostics.get(i); if (i > 0) json.append(',');
+        List<Diagnostic> orderedDiagnostics = jp.igapyon.mikumd2html.core.Diagnostics.stable(diagnostics);
+        for (int i = 0; i < orderedDiagnostics.size(); i++) {
+            Diagnostic d = orderedDiagnostics.get(i); if (i > 0) json.append(',');
             json.append("\n    {\"severity\":\"").append(jsonEscape(d.getSeverity())).append("\",\"code\":\"").append(jsonEscape(d.getCode()))
                     .append("\",\"message\":\"").append(jsonEscape(d.getMessage())).append('"');
-            if (d.getLabel() != null) json.append(",\"source\":{\"label\":\"").append(jsonEscape(d.getLabel())).append('"')
-                    .append(d.getStart() == null ? "}" : ",\"start\":{\"line\":" + d.getStart().getLine() + ",\"column\":" + d.getStart().getColumn() + "}}");
+            if (d.getLabel() != null) {
+                json.append(",\"source\":{\"label\":\"").append(jsonEscape(d.getLabel())).append('"');
+                appendSourcePosition(json, "start", d.getStart());
+                appendSourcePosition(json, "end", d.getEnd());
+                json.append('}');
+            }
+            appendDetails(json, d.getDetails());
             json.append('}');
         }
         return json.append("\n  ]\n}\n").toString();
+    }
+
+    private static void appendSourcePosition(StringBuilder json, String key, SourcePosition position) {
+        if (position != null) json.append(",\"").append(key).append("\":{\"line\":").append(position.getLine())
+                .append(",\"column\":").append(position.getColumn()).append('}');
+    }
+
+    private static void appendDetails(StringBuilder json, java.util.Map<String, Object> details) {
+        if (details.isEmpty()) return;
+        int start = json.length();
+        json.append(",\"details\":{");
+        boolean first = true;
+        for (java.util.Map.Entry<String, Object> entry : details.entrySet()) {
+            Object value = entry.getValue();
+            if (!(value instanceof String || value instanceof Number || value instanceof Boolean)) continue;
+            if (!first) json.append(',');
+            first = false;
+            json.append('"').append(jsonEscape(entry.getKey())).append("\":");
+            if (value instanceof String) json.append('"').append(jsonEscape((String) value)).append('"');
+            else json.append(value.toString());
+        }
+        if (first) json.setLength(start);
+        else json.append('}');
     }
 
     private static String jsonEscape(String value) {

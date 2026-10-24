@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "id": "empty", "input": "empty.md", "inputName": "empty.md" },
+    { "id": "commonmark-gfm", "input": "commonmark-gfm.md", "inputName": "commonmark-gfm.md" },
+    { "id": "front-matter", "input": "front-matter.md", "inputName": "front-matter.md" },
+    { "id": "raw-html", "input": "raw-html.md", "inputName": "raw-html.md" },
+    { "id": "unicode-slugs", "input": "unicode-slugs.md", "inputName": "unicode-slugs.md" }
+  ]
+}

@@ -2,65 +2,74 @@
 
 ## Current Stage
 
-The first runnable Java conversion path is implemented. It covers the public
-conversion call, a JDK-only Markdown subset, local and Base64 image embedding,
-HTML assembly, and a testable file CLI. It is an initial port, not a claim of
-full `miku-md2html` v0.3.5 parity.
+The Java runtime has a partial implementation against the pinned Node v0.4.0
+source. This is not a full parity claim. The compatibility baseline is in
+[upstream snapshot](upstream-snapshot.md), and tracked Node outputs are under
+`src/test/resources/parity/v0.4.0/expected/`.
 
-The pinned Node source declares 14 direct production dependencies. The Java
-runtime deliberately has none, following the project's dependency policy;
-this makes the hand-written Java substitutes a compatibility risk, not proof
-that the implementations behave alike. The dependency inventory and Node's
-bundling model are recorded in [development notes](development.md).
+## Implemented in the Current Work
 
-## Implemented
+- [x] Empty Markdown handling, remote-image classification, encoded local image
+  paths, and Node-style repeated-hyphen slug normalization.
+- [x] Raster dimensions for PNG/CgBI, JPEG including DNL, and WebP chunk forms;
+  large-image warning deduplication.
+- [x] YAML 1.2 CoreSchema front matter through SnakeYAML Engine.
+- [x] Flexmark parsing for image and non-image inputs, with tables, autolink,
+  GFM strikethrough, task lists, and footnotes enabled.
+- [x] jsoup HTML5 fragment sanitation with an allowlist, unsafe-link removal,
+  raw image routing, and inline SVG-to-data-image conversion.
+- [x] SVG XML hardening, strict UTF-8, namespace and element checks, nested
+  raster validation, and ph-css AST checks for SVG style content and attributes.
+- [x] Five pinned Node v0.4.0 oracle fixtures, provenance hashes, and a
+  packaged-JAR comparison script.
+- [x] CI workflow for package/tests and packaged-runtime checks on Java 8/25;
+  Release asset workflow for human-published Releases.
+- [x] Runtime and distribution ZIP license notices plus dependency inventory.
 
-- [x] Java request/result/diagnostic models and the public core entry point.
-- [x] Front matter for the supported scalar `title`, `description`, and `lang`
-  keys; metadata precedence; UTF-8 byte accounting.
-- [x] Headings, unique IDs, TOC, fragment links, paragraphs, emphasis, code
-  spans/fences, links, blockquotes, flat lists/task lists, rules, and GFM tables.
-- [x] Local and Base64 PNG/JPEG/GIF/WebP/SVG image embedding, MIME/header
-  checks, output and image warnings, and image statistics.
-- [x] JDK XML-based SVG validation, conservative raw-HTML handling, bundled
-  viewer resources, CSP hash, and a self-contained HTML document.
-- [x] CLI help/version, shared option names/defaults, strict UTF-8 input,
-  output/report writing, `--force`, diagnostics, and exit-code classes.
-- [x] Initial focused JUnit coverage for core output, metadata, images,
-  sanitization, links, argument parsing, local reads, and root traversal.
+## Remaining Differences and Unverified Work
 
-## Remaining Differences
-
-- The hand-written parser is a deliberate JDK-only subset. It is not a full
-  CommonMark/GFM parser: footnotes, reference links, nested/loose lists,
-  multiline table details, full delimiter rules, and parser source-map parity
-  remain unimplemented.
-- Front matter is a small scalar parser, not a complete YAML parser. Complex
-  YAML structures and all YAML edge cases are not supported.
-- Syntax highlighting is not ported. Fence language aliases are retained as
-  CSS classes, and code text is escaped as plain text.
-- Raw HTML uses a simpler conservative policy: active block elements and their
-  contents are removed, while other raw tags are unwrapped. It does not match
-  the upstream sanitizer tree policy.
-- SVG validation uses a strict JDK allowlist. It can reject safe upstream SVG
-  constructs and does not normalize the SVG source before embedding.
-- Local asset identity and staged output checks cover ordinary paths and
-  symlink containment, but do not yet reproduce every Node race, hard-link,
-  input/report collision, and filesystem-failure test.
-- The JSON report and Java-specific `--help` text are compatible in purpose and
-  shared options, but are not byte-for-byte copies of the Node CLI contract.
-- The upstream's full test map, output snapshots, and format/security corpus
-  have not yet been ported.
+- Flexmark and jsoup do not yet form one provenance-carrying article tree.
+  GFM table handling differs on a pipe inside an inline code span, and the
+  current serializer does not preserve Node's blank-line spacing after a
+  reference definition.
+- Footnote edge cases, repeated back references, raw HTML provenance, and exact
+  warning source ranges still need full fixture coverage.
+- The jsoup sanitizer derives some raw HTML source positions from rendered
+  fragment positions. It does not carry source/generated provenance through an
+  article tree, so id/class spoofing and source ranges need broader tests.
+- Syntax highlighting is not ported. Rhino remains isolated in the dependency
+  probe; Java 8/25 availability and the runtime isolation gate are unverified.
+- Image handling does not yet match Node's prepare/estimate/embed phases,
+  resolver call counts, complete attempted-path tracking, or all output-budget
+  boundaries.
+- CLI output/report staging now prepares both files before commit. Injected
+  report-stage, report-commit, and internal staging failures, plus missing-input
+  failure reports, have focused tests. Reference-scan collision safety and
+  filesystem-race cases still need the Node failure-injection suite.
+- The upstream 10-file test suite is not fully mapped to Java tests. The current
+  Node/JAR comparison reports four of five tracked exact-output cases passing.
+- The local host exposes OpenJDK 17 only. The new CI workflows have not run on
+  GitHub, so Java 8/25 runtime checks and Release asset attachment remain
+  pending.
 
 ## Verification
 
-- `mvn -q -DskipTests compile` passed on OpenJDK 17.0.21.
-- `mvn -q package` passed on OpenJDK 17.0.21; this also ran all 8 focused
-  JUnit tests.
-- Executable jar `--help` and `--version` passed. A README conversion with a
-  JSON report completed, and the report parsed as valid JSON.
-- This host exposes OpenJDK 17 only. Java 8 and a newer LTS runtime were not
-  available through `/usr/libexec/java_home -V`, so those runtime checks remain.
+The current implementation compiles with `--release 8` on OpenJDK 17 and runs
+43 JUnit tests successfully. The local packaged-JAR smoke checks version, help,
+data-image conversion, report fields, and no-force output protection. The
+Release helper has passed a local positive staging run for exactly the runtime
+and sources JARs, plus a tag/POM mismatch rejection before staging.
 
-See [upstream test mapping](upstream-test-mapping.md) and
-[upstream follow-up log](upstream-followup-log.md) for traceability.
+The fixed Node comparison currently reports:
+
+| Fixture | Result |
+| --- | --- |
+| `empty` | HTML, metadata, diagnostics, and stats match |
+| `commonmark-gfm` | GFM table inline-code pipe parsing and reference-definition spacing differ; diagnostics match; report schema v2 fields are compared by focused CLI tests |
+| `front-matter` | HTML, metadata, diagnostics, and stats match |
+| `raw-html` | HTML, metadata, diagnostics, and stats match |
+| `unicode-slugs` | HTML, metadata, diagnostics, and stats match |
+
+See [the upstream test map](upstream-test-mapping.md),
+[dependency decisions](dependency-decisions.md), and
+[the execution plan](upstream-v0.4.0-followup-plan.md) for the detailed backlog.

@@ -48,4 +48,28 @@ class MikuMd2htmlCoreTest {
         assertTrue(result.getDiagnostics().stream().anyMatch(d -> "W_HTML_SANITIZED".equals(d.getCode())));
         assertTrue(result.getDiagnostics().stream().anyMatch(d -> "W_LINK_REMOVED".equals(d.getCode())));
     }
+
+    @Test void acceptsEmptyMarkdownAndUsesTheFilenameAsTitle() {
+        ConvertResult result = MikuMd2htmlCore.convertMarkdown("", "empty.md", null);
+        assertTrue(result.isSuccess(), () -> result.getDiagnostics().toString());
+        assertEquals("empty", result.getTitle());
+        assertTrue(result.getHtml().contains("<body>"));
+        assertEquals(0, result.getStats().getHeadingCount());
+    }
+
+    @Test void collapsesRunsOfHyphensInHeadingSlugs() {
+        ConvertResult result = MikuMd2htmlCore.convertMarkdown("# a--b\n\n# a b\n\n[go](#a--b)", "slug.md", null);
+        assertTrue(result.isSuccess());
+        assertTrue(result.getHtml().contains("id=\"miku-h-a-b\">a--b</h1>"));
+        assertTrue(result.getHtml().contains("id=\"miku-h-a-b-2\">a b</h1>"));
+        assertTrue(result.getHtml().contains("href=\"#miku-h-a-b\">go</a>"));
+    }
+
+    @Test void reportsRemoteImagesSeparatelyFromUnsupportedImageSchemes() {
+        for (String destination : new String[] { "https://example.invalid/a.png", "//example.invalid/a.png" }) {
+            ConvertResult result = MikuMd2htmlCore.convertMarkdown("![remote](" + destination + ")", "remote.md", null);
+            assertFalse(result.isSuccess());
+            assertEquals("E_REMOTE_IMAGE", result.getDiagnostics().get(0).getCode());
+        }
+    }
 }

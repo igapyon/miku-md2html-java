@@ -1,0 +1,60 @@
+{
+  "upstream": {
+    "version": "0.4.0",
+    "commit": "b18a6e390425bd0e15387a2d608980a42a1809e9",
+    "runtime": "bundle/miku-md2html-runtime.mjs",
+    "runtimeSha256": "4c5aaeac024b5c31c003e2df40d66d8e8d2e5ad4a4fbe4c2222619c83290f16c"
+  },
+  "cases": [
+    {
+      "id": "empty",
+      "input": "empty.md",
+      "inputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expectedHtml": "empty.node.html",
+      "expectedHtmlSha256": "71ae6e46fa8b7cc5f1faa01c8355fefd45105e0c8d1171589cced8ebe6e6ff49",
+      "expectedResult": "empty.node.json",
+      "expectedResultSha256": "d1ee4ec6b9a6b038ff197b51ef39d292f1b84c28c44bdc925acc1060649ed3b7",
+      "success": true
+    },
+    {
+      "id": "commonmark-gfm",
+      "input": "commonmark-gfm.md",
+      "inputSha256": "b75082d71a727eeebf595bdef3d53018cadd548b26fa85c9cfdb78a9a43d3d5e",
+      "expectedHtml": "commonmark-gfm.node.html",
+      "expectedHtmlSha256": "c12dcdc63f481e9380c2cbeb4a3308c2d8994d2c93df47904059732c09c4fd32",
+      "expectedResult": "commonmark-gfm.node.json",
+      "expectedResultSha256": "d93b3459acecf58aec98459940d6f30033915e62ce79f85f3c5cb7b758d4e695",
+      "success": true
+    },
+    {
+      "id": "front-matter",
+      "input": "front-matter.md",
+      "inputSha256": "ebaf37053da327c1e410ec954b64d0db667db03129a23506fdf54f7d0efd12e2",
+      "expectedHtml": "front-matter.node.html",
+      "expectedHtmlSha256": "4ff98bfc30b3e4ff03d828c693f3ce727107e8f7e18009497a71b40d35764f46",
+      "expectedResult": "front-matter.node.json",
+      "expectedResultSha256": "61de89d1d29c4141f375aae47c12c52bac0f4b04e22478a991b9f0dc3cce872e",
+      "success": true
+    },
+    {
+      "id": "raw-html",
+      "input": "raw-html.md",
+      "inputSha256": "6e956f50077aaf77398556270d6499a38764a7cf2f683a5d4cafdfa1d5d48038",
+      "expectedHtml": "raw-html.node.html",
+      "expectedHtmlSha256": "4f4ee4f9b6a481a4a5ff70fda927135be5f59c433abb7bc07e20bf7dd5417efe",
+      "expectedResult": "raw-html.node.json",
+      "expectedResultSha256": "d9bebdbfd155b5ca440bb469e4b52043063dbbd3400066c1cd15c31c6e6753f5",
+      "success": true
+    },
+    {
+      "id": "unicode-slugs",
+      "input": "unicode-slugs.md",
+      "inputSha256": "eb479ad7121a128fffc39c6665213490776ddbd8bf87fd91cfba3eade570fe02",
+      "expectedHtml": "unicode-slugs.node.html",
+      "expectedHtmlSha256": "76e88e945b6e2395061755a713c242063fde565e80f3d2a52b48b59ed02c95f3",
+      "expectedResult": "unicode-slugs.node.json",
+      "expectedResultSha256": "4dee27ea5f784d3ce48522a7003b6a90430262c146205be86f6063303a6b86ac",
+      "success": true
+    }
+  ]
+}

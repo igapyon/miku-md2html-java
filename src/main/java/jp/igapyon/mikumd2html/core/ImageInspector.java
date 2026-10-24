@@ -1,10 +1,32 @@
 package jp.igapyon.mikumd2html.core;
 
 import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
+import com.helger.css.ECSSVersion;
+import com.helger.css.decl.AbstractHasTopLevelRules;
+import com.helger.css.decl.CSSDeclaration;
+import com.helger.css.decl.CSSDeclarationList;
+import com.helger.css.decl.CSSExpression;
+import com.helger.css.decl.CSSExpressionMemberFunction;
+import com.helger.css.decl.CSSExpressionMemberTermURI;
+import com.helger.css.decl.CSSFontFaceRule;
+import com.helger.css.decl.CSSImportRule;
+import com.helger.css.decl.CSSKeyframesRule;
+import com.helger.css.decl.CSSUnknownRule;
+import com.helger.css.decl.CascadingStyleSheet;
+import com.helger.css.decl.IHasCSSDeclarations;
+import com.helger.css.decl.ICSSExpressionMember;
+import com.helger.css.decl.ICSSTopLevelRule;
+import com.helger.css.reader.CSSReader;
+import com.helger.css.reader.CSSReaderDeclarationList;
+import com.helger.css.reader.errorhandler.CollectingCSSParseErrorHandler;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Element;
@@ -13,25 +35,23 @@ import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-/** Inspects the image formats accepted by the Node implementation using JDK APIs only. */
+/** Inspects supported raster and SVG formats; SVG CSS is parsed with the bundled ph-css dependency. */
 public final class ImageInspector {
     public static final class Info {
         private final String mime;
-        private final int width;
-        private final int height;
-        Info(String mime, int width, int height) { this.mime = mime; this.width = width; this.height = height; }
+        private final long width;
+        private final long height;
+        Info(String mime, long width, long height) { this.mime = mime; this.width = width; this.height = height; }
         public String getMime() { return mime; }
-        public int getWidth() { return width; }
-        public int getHeight() { return height; }
+        public long getWidth() { return width; }
+        public long getHeight() { return height; }
     }
 
     private static final Set<String> SVG_ELEMENTS = new HashSet<String>(Arrays.asList(
-            "svg", "g", "defs", "title", "desc", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
-            "text", "tspan", "textpath", "use", "symbol", "lineargradient", "radialgradient", "stop", "clippath", "mask",
-            "marker", "pattern", "filter", "fegaussianblur", "fecolormatrix", "feoffset", "feblend", "fecomposite", "feflood",
-            "femerge", "femergenode", "femorphology", "feturbulence", "fedisplacementmap", "feconvolvematrix", "fecomponenttransfer",
-            "fefuncr", "fefuncg", "fefuncb", "fefunca", "fediffuselighting", "fespecularlighting", "style", "fedistantlight",
-            "fepointlight", "fespotlight", "fetile", "feimage", "image"));
+            ("svg g defs title desc path rect circle ellipse line polyline polygon text tspan textPath use symbol linearGradient radialGradient stop clipPath mask marker pattern filter "
+            + "feGaussianBlur feColorMatrix feOffset feBlend feComposite feFlood feMerge feMergeNode feMorphology feTurbulence feDisplacementMap "
+            + "feConvolveMatrix feComponentTransfer feFuncR feFuncG feFuncB feFuncA feDiffuseLighting feSpecularLighting style feDistantLight "
+            + "fePointLight feSpotLight feTile feImage image").split(" ")));
     private static final Set<String> SVG_ATTRIBUTES = new HashSet<String>(Arrays.asList(
             ("xmlns xmlns:xlink id class role aria-label aria-hidden viewbox preserveaspectratio width height x y x1 x2 y1 y2 cx cy r rx ry "
             + "d points pathlength fill fill-rule fill-opacity stroke stroke-width stroke-linecap stroke-linejoin stroke-miterlimit "
@@ -49,34 +69,34 @@ public final class ImageInspector {
     public static Info inspect(byte[] bytes, String expectedMime) {
         if (bytes == null || bytes.length == 0) throw invalid("Image data is empty.");
         String mime;
-        int width;
-        int height;
+        long width;
+        long height;
         if (starts(bytes, new int[] { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a })) {
             mime = "image/png";
             if (bytes.length < 33) throw invalid("PNG is truncated.");
-            width = int32be(bytes, 16); height = int32be(bytes, 20);
             checkPng(bytes);
+            RasterDimensions.Size dimensions = RasterDimensions.read(bytes, mime);
+            if (dimensions == null) throw invalid("Image dimensions could not be read.");
+            width = dimensions.width; height = dimensions.height;
         } else if (starts(bytes, new int[] { 0xff, 0xd8, 0xff })) {
             mime = "image/jpeg";
-            int[] dimensions = jpegDimensions(bytes); width = dimensions[0]; height = dimensions[1];
             if (bytes.length < 4 || (bytes[bytes.length - 2] & 255) != 255 || (bytes[bytes.length - 1] & 255) != 217) throw invalid("JPEG is truncated.");
-        } else if (ascii(bytes, 0, 6).matches("GIF8[79]a")) {
+            RasterDimensions.Size dimensions = RasterDimensions.read(bytes, mime);
+            if (dimensions == null) throw invalid("Image dimensions could not be read.");
+            width = dimensions.width; height = dimensions.height;
+        } else if (bytes.length >= 6 && ascii(bytes, 0, 6).matches("GIF8[79]a")) {
             mime = "image/gif";
             if (bytes.length < 14 || (bytes[bytes.length - 1] & 255) != 0x3b) throw invalid("GIF is truncated.");
-            width = u16le(bytes, 6); height = u16le(bytes, 8);
+            RasterDimensions.Size dimensions = RasterDimensions.read(bytes, mime);
+            if (dimensions == null) throw invalid("Image dimensions could not be read.");
+            width = dimensions.width; height = dimensions.height;
         } else if (bytes.length >= 12 && "RIFF".equals(ascii(bytes, 0, 4)) && "WEBP".equals(ascii(bytes, 8, 4))) {
             mime = "image/webp";
             long declared = (long) u32le(bytes, 4) + 8L;
-            if (declared > bytes.length || bytes.length < 30) throw invalid("WebP is truncated.");
-            String chunk = ascii(bytes, 12, 4);
-            if ("VP8X".equals(chunk)) {
-                width = 1 + u24le(bytes, 24); height = 1 + u24le(bytes, 27);
-            } else if ("VP8 ".equals(chunk) && (bytes[23] & 255) == 0x9d && (bytes[24] & 255) == 0x01 && (bytes[25] & 255) == 0x2a) {
-                width = u16le(bytes, 26) & 0x3fff; height = u16le(bytes, 28) & 0x3fff;
-            } else if ("VP8L".equals(chunk) && (bytes[20] & 255) == 0x2f) {
-                width = 1 + (bytes[21] & 255) + ((bytes[22] & 0x3f) << 8);
-                height = 1 + ((bytes[22] & 0xc0) >>> 6) + ((bytes[23] & 255) << 2) + ((bytes[24] & 0x0f) << 10);
-            } else throw invalid("WebP header is invalid or unsupported.");
+            if (declared > bytes.length || bytes.length < 20) throw invalid("WebP is truncated.");
+            RasterDimensions.Size dimensions = RasterDimensions.read(bytes, mime);
+            if (dimensions == null) throw invalid("WebP header is invalid or unsupported.");
+            width = dimensions.width; height = dimensions.height;
         } else if (looksLikeSvg(bytes)) {
             mime = "image/svg+xml";
             int[] dimensions = inspectSvg(bytes); width = dimensions[0]; height = dimensions[1];
@@ -84,7 +104,8 @@ public final class ImageInspector {
             throw new AssetAccessException("E_IMAGE_FORMAT", "The image format is unsupported or its header is invalid.");
         }
         if (expectedMime != null && !expectedMime.equals(mime)) throw invalid("Image data MIME does not match its file format.");
-        if (width < 0 || height < 0 || ((width == 0) != (height == 0))) throw invalid("Image dimensions are invalid.");
+        if (!"image/svg+xml".equals(mime) && (width <= 0 || height <= 0)) throw invalid("Image dimensions are invalid.");
+        if (width < 0 || height < 0) throw invalid("Image dimensions are invalid.");
         return new Info(mime, width, height);
     }
 
@@ -131,8 +152,14 @@ public final class ImageInspector {
     }
 
     private static int[] inspectSvg(byte[] bytes) {
-        String source = new String(bytes, StandardCharsets.UTF_8);
-        if (source.indexOf('\ufffd') >= 0 || source.matches("(?is).*<!\\s*(DOCTYPE|ENTITY).*")) throw new AssetAccessException("E_SVG_UNSAFE", "SVG must be UTF-8 without DTDs or entities.");
+        final String source;
+        try {
+            source = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+        } catch (CharacterCodingException ex) {
+            throw new AssetAccessException("E_SVG_INVALID", "SVG is not valid UTF-8.", ex);
+        }
+        if (source.matches("(?is).*<!\\s*(DOCTYPE|ENTITY).*")) throw new AssetAccessException("E_SVG_UNSAFE", "SVG DTDs and entities are not supported.");
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
@@ -144,9 +171,17 @@ public final class ImageInspector {
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
             factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-            org.w3c.dom.Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(bytes));
+            javax.xml.parsers.DocumentBuilder builder = factory.newDocumentBuilder();
+            builder.setErrorHandler(new DefaultHandler() {
+                @Override public void error(org.xml.sax.SAXParseException ex) throws SAXException { throw ex; }
+                @Override public void fatalError(org.xml.sax.SAXParseException ex) throws SAXException { throw ex; }
+            });
+            org.w3c.dom.Document document = builder.parse(new ByteArrayInputStream(bytes));
             Element root = document.getDocumentElement();
             if (root == null || !"svg".equals(root.getLocalName()) || !"http://www.w3.org/2000/svg".equals(root.getNamespaceURI())) throw new AssetAccessException("E_SVG_INVALID", "SVG must have an SVG namespace root element.");
+            for (Node child = document.getFirstChild(); child != null; child = child.getNextSibling()) {
+                if (child.getNodeType() == Node.PROCESSING_INSTRUCTION_NODE) throw new AssetAccessException("E_SVG_UNSAFE", "SVG processing instructions are not supported.");
+            }
             validateSvg(root);
             int width = svgDimension(root.getAttribute("width"));
             int height = svgDimension(root.getAttribute("height"));
@@ -159,11 +194,15 @@ public final class ImageInspector {
     }
 
     private static void validateSvg(Element element) {
-        String name = element.getLocalName().toLowerCase(java.util.Locale.ROOT);
-        if (!SVG_ELEMENTS.contains(name) || "script".equals(name) || "foreignobject".equals(name)
-                || name.startsWith("animate") || "set".equals(name) || "discard".equals(name)) {
+        String name = element.getLocalName();
+        if (name == null) name = element.getNodeName();
+        String normalizedName = name.toLowerCase(java.util.Locale.ROOT);
+        if (!"http://www.w3.org/2000/svg".equals(element.getNamespaceURI()) || !SVG_ELEMENTS.contains(name)
+                || "script".equals(normalizedName) || "foreignobject".equals(normalizedName)
+                || normalizedName.startsWith("animate") || "set".equals(normalizedName) || "discard".equals(normalizedName)) {
             throw new AssetAccessException("E_SVG_UNSAFE", "SVG contains an unsupported or unsafe element: " + name + ".");
         }
+        if ("style".equals(normalizedName)) validateSvgCss(element.getTextContent(), true);
         NamedNodeMap attributes = element.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
             Node attribute = attributes.item(i);
@@ -171,18 +210,106 @@ public final class ImageInspector {
             String value = attribute.getNodeValue().trim();
             if (attr.startsWith("on") || "xml:base".equals(attr) || !SVG_ATTRIBUTES.contains(attr)) throw new AssetAccessException("E_SVG_UNSAFE", "SVG contains an unsupported or unsafe attribute: " + attr + ".");
             if ("href".equals(attr) || "xlink:href".equals(attr)) {
-                if (!value.startsWith("#") && !value.matches("(?is)data:image/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}")) throw new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", "SVG external references are not supported.");
+                if (value.startsWith("#")) continue;
+                if (!"image".equals(normalizedName) && !"feimage".equals(normalizedName)) {
+                    throw new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", "SVG external references are not supported.");
+                }
+                validateNestedRaster(value);
             }
-            if ("style".equals(attr) || "style".equals(name)) {
-                String css = "style".equals(name) ? element.getTextContent() : value;
-                if (css.matches("(?is).*(@import|expression\\s*\\(|javascript:|url\\s*\\(\\s*(['\\\"]?)(?!#)).*")) throw new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", "SVG CSS may only use local fragment references.");
-            }
-            if (("fill".equals(attr) || "stroke".equals(attr) || attr.endsWith("-path"))
-                    && value.toLowerCase(java.util.Locale.ROOT).contains("url(") && !value.matches("(?i)url\\(\\s*['\\\"]?#[-A-Za-z0-9_.:]+['\\\"]?\\s*\\)")) {
-                throw new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", "SVG paint references must be local fragments.");
-            }
+            if ("style".equals(attr)) validateSvgCss(value, false);
+            if ("fill".equals(attr) || "stroke".equals(attr) || "filter".equals(attr) || "clip-path".equals(attr)
+                    || "mask".equals(attr) || attr.startsWith("marker-")) validateSvgCss(attr + ": " + value + ";", false);
         }
         for (Node child = element.getFirstChild(); child != null; child = child.getNextSibling()) if (child instanceof Element) validateSvg((Element) child);
+    }
+
+    private static void validateSvgCss(String css, boolean stylesheet) {
+        try {
+            CollectingCSSParseErrorHandler errors = new CollectingCSSParseErrorHandler();
+            if (stylesheet) {
+                CascadingStyleSheet sheet = CSSReader.readFromString(css, ECSSVersion.LATEST, errors);
+                if (sheet == null || errors.hasParseErrors()) throw invalidSvgCss();
+                if (sheet.hasImportRules()) throw externalSvgCss("SVG CSS imports, font loading, and animation are not supported.");
+                inspectCssRules(sheet);
+            } else {
+                CSSDeclarationList declarations = CSSReaderDeclarationList.readFromString(css, ECSSVersion.LATEST, errors);
+                if (declarations == null || errors.hasParseErrors()) throw invalidSvgCss();
+                inspectCssDeclarations(declarations);
+            }
+        } catch (AssetAccessException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw invalidSvgCss();
+        }
+    }
+
+    private static void inspectCssRules(AbstractHasTopLevelRules rules) {
+        for (ICSSTopLevelRule rule : rules.getAllRules()) {
+            if (rule instanceof CSSFontFaceRule || rule instanceof CSSKeyframesRule) {
+                throw externalSvgCss("SVG CSS imports, font loading, and animation are not supported.");
+            }
+            if (rule instanceof CSSImportRule) throw externalSvgCss("SVG CSS imports, font loading, and animation are not supported.");
+            if (rule instanceof CSSUnknownRule) throw invalidSvgCss();
+            if (rule instanceof IHasCSSDeclarations) inspectCssDeclarations((IHasCSSDeclarations<?>) rule);
+            if (rule instanceof AbstractHasTopLevelRules) inspectCssRules((AbstractHasTopLevelRules) rule);
+        }
+    }
+
+    private static void inspectCssDeclarations(IHasCSSDeclarations<?> container) {
+        for (CSSDeclaration declaration : container.getAllDeclarations()) {
+            String property = declaration.getProperty().toLowerCase(Locale.ROOT);
+            if (property.matches("^animation(?:-|$).*")) throw new AssetAccessException("E_SVG_UNSUPPORTED", "SVG CSS animation is not supported.");
+            inspectCssExpression(declaration.getExpression());
+        }
+    }
+
+    private static void inspectCssDeclarations(CSSDeclarationList declarations) {
+        for (CSSDeclaration declaration : declarations.getAllDeclarations()) {
+            String property = declaration.getProperty().toLowerCase(Locale.ROOT);
+            if (property.matches("^animation(?:-|$).*")) throw new AssetAccessException("E_SVG_UNSUPPORTED", "SVG CSS animation is not supported.");
+            inspectCssExpression(declaration.getExpression());
+        }
+    }
+
+    private static void inspectCssExpression(CSSExpression expression) {
+        if (expression == null) return;
+        for (ICSSExpressionMember member : expression.getAllMembers()) {
+            if (member instanceof CSSExpressionMemberTermURI) {
+                String uri = ((CSSExpressionMemberTermURI) member).getURIString();
+                if (uri == null || !uri.matches("^#[^\\s'\"()]+$")) {
+                    throw externalSvgCss("SVG CSS may only reference local fragment identifiers.");
+                }
+            }
+            if (member instanceof CSSExpressionMemberFunction) {
+                CSSExpressionMemberFunction function = (CSSExpressionMemberFunction) member;
+                if (function.hasExpression()) inspectCssExpression(function.getExpression());
+            }
+        }
+    }
+
+    private static AssetAccessException invalidSvgCss() {
+        return new AssetAccessException("E_SVG_UNSUPPORTED", "SVG contains invalid CSS.");
+    }
+
+    private static AssetAccessException externalSvgCss(String message) {
+        return new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", message);
+    }
+
+    private static void validateNestedRaster(String value) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
+                "(?i)^data:(image/(?:png|jpeg|gif|webp));base64,([A-Za-z0-9+/]*={0,2})$").matcher(value);
+        if (!matcher.matches()) throw new AssetAccessException("E_SVG_EXTERNAL_RESOURCE", "SVG image references must be embedded raster data URLs.");
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(matcher.group(2));
+            if (bytes.length == 0 || !java.util.Base64.getEncoder().encodeToString(bytes).equals(matcher.group(2))) {
+                throw invalid("SVG contains an invalid embedded raster image.");
+            }
+            inspect(bytes, matcher.group(1).toLowerCase(Locale.ROOT));
+        } catch (AssetAccessException ex) {
+            throw ex;
+        } catch (IllegalArgumentException ex) {
+            throw invalid("SVG contains an invalid embedded raster image.");
+        }
     }
 
     private static int svgDimension(String value) {

@@ -38,13 +38,16 @@ public final class DocumentStructure {
         if (headings.isEmpty()) return "";
         StringBuilder html = new StringBuilder("<details class=\"miku-md2html-toc\" open><summary>");
         html.append(lang.toLowerCase(Locale.ROOT).startsWith("ja") ? "目次" : "Contents");
-        html.append("</summary><ol>");
+        html.append("</summary><ol>\n");
+        boolean first = true;
         for (Heading heading : headings) {
+            if (!first) html.append('\n');
+            first = false;
             html.append("<li data-level=\"").append(heading.getLevel()).append("\"><a href=\"#")
                     .append(HtmlEscape.attribute(heading.getId())).append("\">")
                     .append(HtmlEscape.text(heading.getText())).append("</a></li>");
         }
-        return html.append("</ol></details>").toString();
+        return html.append("\n</ol></details>").toString();
     }
 
     public static String rewriteFragments(String html, List<Heading> headings, List<Diagnostic> diagnostics, int lineOffset) {
@@ -54,6 +57,8 @@ public final class DocumentStructure {
             ids.add(heading.getId());
             if (!bySlug.containsKey(heading.getSlug())) bySlug.put(heading.getSlug(), heading.getId());
         }
+        Matcher generatedIds = Pattern.compile("\\bid=\"(miku-(?:fn|fnref)-[^\"]+)\"").matcher(html);
+        while (generatedIds.find()) ids.add(generatedIds.group(1));
         Matcher matcher = FRAGMENT.matcher(html);
         StringBuffer result = new StringBuffer();
         while (matcher.find()) {

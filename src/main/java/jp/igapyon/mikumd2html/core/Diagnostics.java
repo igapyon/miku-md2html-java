@@ -13,6 +13,11 @@ public final class Diagnostics {
         diagnostics.add(new Diagnostic(severity, code, message, label, start, null));
     }
 
+    public static void add(List<Diagnostic> diagnostics, String severity, String code, String message,
+            String label, SourcePosition start, java.util.Map<String, Object> details) {
+        diagnostics.add(new Diagnostic(severity, code, message, label, start, details));
+    }
+
     public static boolean hasErrors(List<Diagnostic> diagnostics) {
         for (Diagnostic item : diagnostics) if ("error".equals(item.getSeverity())) return true;
         return false;

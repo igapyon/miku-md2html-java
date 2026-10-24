@@ -8,6 +8,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,8 @@ import jp.igapyon.mikumd2html.core.AssetResolver;
 /** Local filesystem adapter with both lexical and canonical root containment checks. */
 public final class LocalAssetResolver implements AssetResolver {
     private static final class Record {
-        final Path path; final long size; final Object fileKey; final long modified;
-        Record(Path path, BasicFileAttributes attrs) { this.path = path; this.size = attrs.size(); this.fileKey = attrs.fileKey(); this.modified = attrs.lastModifiedTime().toMillis(); }
+        final Path path; final long size; final Object fileKey; final FileTime modified;
+        Record(Path path, BasicFileAttributes attrs) { this.path = path; this.size = attrs.size(); this.fileKey = attrs.fileKey(); this.modified = attrs.lastModifiedTime(); }
     }
 
     private final Path root;
@@ -94,7 +95,7 @@ public final class LocalAssetResolver implements AssetResolver {
     }
 
     private static boolean same(Record record, BasicFileAttributes attrs) {
-        return attrs.isRegularFile() && attrs.size() == record.size && attrs.lastModifiedTime().toMillis() == record.modified
+        return attrs.isRegularFile() && attrs.size() == record.size && record.modified.equals(attrs.lastModifiedTime())
                 && (record.fileKey == null || record.fileKey.equals(attrs.fileKey()));
     }
 

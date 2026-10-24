@@ -34,7 +34,7 @@ public final class MarkdownConverter {
         }
         if (Diagnostics.hasErrors(diagnostics)) return failure("Untitled", "ja", null, diagnostics, emptyStats());
 
-        String markdown = source.charAt(0) == '\ufeff' ? source.substring(1) : source;
+        String markdown = !source.isEmpty() && source.charAt(0) == '\ufeff' ? source.substring(1) : source;
         markdown = markdown.replace("\r\n", "\n").replace('\r', '\n');
         long inputBytes = markdown.getBytes(StandardCharsets.UTF_8).length;
         if (inputBytes > maxBytes) {
@@ -45,6 +45,7 @@ public final class MarkdownConverter {
         FrontMatter front = new FrontMatterParser().parse(markdown, diagnostics);
         String lang = langOverride != null ? langOverride : front.getLang() != null ? front.getLang() : "ja";
         String description = front.getDescription();
+        if (!front.isValid()) return failure("Untitled", lang, description, diagnostics, emptyStats());
         ImageEmbeddingSession images = new ImageEmbeddingSession(options.getAssets(), diagnostics, maxBytes);
         MarkdownDocument document = new MarkdownParser(diagnostics, front.getLineOffset(), images).parse(front.getBody());
         List<DocumentStructure.Heading> headings = document.getHeadings();
@@ -76,7 +77,8 @@ public final class MarkdownConverter {
     private static ConversionStats emptyStats() { return new ConversionStats(0, 0, 0, 0L, 0L, 0L); }
     private static ConversionStats stats(int headings, ImageEmbeddingSession images, long htmlBytes) {
         return new ConversionStats(headings, images.getOccurrences(), images.getUniqueAssets(),
-                images.getUniqueSourceAssetBytes(), images.getEmbeddedPayloadBytes(), htmlBytes);
+                images.getUniqueSourceAssetBytes(), images.getEmbeddedPayloadBytes(), images.getEmbeddedOccurrences(),
+                0, images.getOmittedOccurrences(), htmlBytes);
     }
     private static ConvertResult failure(String title, String lang, String description, List<Diagnostic> diagnostics, ConversionStats stats) {
         return new ConvertResult(false, null, title, lang, description, Diagnostics.stable(diagnostics), stats);

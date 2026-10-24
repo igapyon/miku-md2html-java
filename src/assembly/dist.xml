@@ -27,6 +27,10 @@
       <outputDirectory>/</outputDirectory>
     </file>
     <file>
+      <source>src/main/resources/META-INF/THIRD-PARTY-NOTICES.txt</source>
+      <outputDirectory>/</outputDirectory>
+    </file>
+    <file>
       <source>docs/cli.md</source>
       <outputDirectory>/docs</outputDirectory>
     </file>

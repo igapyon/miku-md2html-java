@@ -1,13 +1,17 @@
 # Upstream Snapshot
 
 - Repository: <https://github.com/igapyon/miku-md2html>
-- Compatibility tag: `v0.3.5`
-- Commit: `065c828dc6e987a39bdd7a4a15ea48a97ca2eccd`
-- Product package version: `0.3.5`
-- Local checkout used for initial inventory: `../miku-md2html`
-- Reference method: local checkout; no upstream source is vendored in this repository.
+- Compatibility source: `v0.4.0`
+- Commit: `b18a6e390425bd0e15387a2d608980a42a1809e9`
+- Runtime bundle: `bundle/miku-md2html-runtime.mjs`
+- Runtime bundle SHA-256: `4c5aaeac024b5c31c003e2df40d66d8e8d2e5ad4a4fbe4c2222619c83290f16c`
+- Java product artifact version: `0.3.6`
+- Local source/oracle checkout: `../miku-md2html`
+- Reference method: clean local checkout; upstream source is not vendored here.
 
-The Java artifact version follows the pinned Node package version (`0.3.5`).
-This version alignment identifies the upstream baseline; it does not claim
-that all Node features have already been ported. The artifact id remains
-`miku-md2html-java`.
+The Node v0.4.0 commit is the fixed compatibility target for this migration.
+The Java artifact version is `0.3.6`; this does not claim full Node parity.
+Four of the five currently tracked Node oracle cases match the packaged Java
+runtime. See [remaining migration items](remaining-migration-items.md) and the
+[follow-up execution plan](upstream-v0.4.0-followup-plan.md) for the current
+implementation and pending gates.
