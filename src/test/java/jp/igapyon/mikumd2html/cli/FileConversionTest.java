@@ -87,7 +87,7 @@ class FileConversionTest {
 
         assertEquals(0, exit);
         assertTrue(json.contains("\"schemaVersion\": \"2\""));
-        assertTrue(json.contains("\"imageMode\": \"embed\""));
+        assertTrue(json.contains("\"imageMode\": \"reference\""));
         assertTrue(json.contains("\"description\": \"Report description\""));
         assertTrue(json.contains("\"details\":{\"field\":\"lang\"}"));
     }

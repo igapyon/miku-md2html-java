@@ -1,0 +1,35 @@
+{
+  "success": false,
+  "metadata": {
+    "title": "ref-unsafe-svg",
+    "lang": "ja"
+  },
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "E_SVG_UNSAFE",
+      "message": "SVG event handler attributes are unsafe.",
+      "source": {
+        "label": "markdown",
+        "start": {
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "line": 1,
+          "column": 22
+        }
+      }
+    }
+  ],
+  "stats": {
+    "headingCount": 0,
+    "imageOccurrences": 1,
+    "uniqueAssets": 1,
+    "uniqueSourceAssetBytes": 93,
+    "embeddedPayloadBytes": 0,
+    "embeddedImageOccurrences": 0,
+    "referencedImageOccurrences": 0,
+    "omittedImageOccurrences": 1
+  }
+}

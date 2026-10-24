@@ -3,6 +3,7 @@ package jp.igapyon.mikumd2html.adapters;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -15,10 +16,10 @@ import java.util.List;
 import java.util.Map;
 import jp.igapyon.mikumd2html.core.AssetAccessException;
 import jp.igapyon.mikumd2html.core.AssetInfo;
-import jp.igapyon.mikumd2html.core.AssetResolver;
+import jp.igapyon.mikumd2html.core.PrefixAssetResolver;
 
 /** Local filesystem adapter with both lexical and canonical root containment checks. */
-public final class LocalAssetResolver implements AssetResolver {
+public final class LocalAssetResolver implements PrefixAssetResolver {
     private static final class Record {
         final Path path; final long size; final Object fileKey; final FileTime modified;
         Record(Path path, BasicFileAttributes attrs) { this.path = path; this.size = attrs.size(); this.fileKey = attrs.fileKey(); this.modified = attrs.lastModifiedTime(); }
@@ -26,10 +27,11 @@ public final class LocalAssetResolver implements AssetResolver {
 
     private final Path root;
     private final Path base;
+    private final Path outputFile;
     private final Map<String, Record> records = new HashMap<String, Record>();
     private final java.util.Set<Path> referencedCandidates = new java.util.LinkedHashSet<Path>();
 
-    private LocalAssetResolver(Path root, Path base) { this.root = root; this.base = base; }
+    private LocalAssetResolver(Path root, Path base, Path outputFile) { this.root = root; this.base = base; this.outputFile = outputFile; }
 
     public static LocalAssetResolver create(Path markdownFile, Path assetRoot) {
         try {
@@ -38,9 +40,42 @@ public final class LocalAssetResolver implements AssetResolver {
             if (rootCandidate == null || !Files.isDirectory(rootCandidate)) throw new IOException("asset root is not a directory");
             Path root = rootCandidate.toRealPath();
             Path base = markdown.getParent().toRealPath();
-            return new LocalAssetResolver(root, base);
+            return new LocalAssetResolver(root, base, null);
         } catch (IOException ex) {
             throw new AssetAccessException("E_IMAGE_READ", "Asset root is not a readable directory.", ex);
+        }
+    }
+
+    public static LocalAssetResolver create(Path markdownFile, Path assetRoot, Path outputFile) {
+        try {
+            Path markdown = markdownFile.toAbsolutePath().normalize();
+            Path rootCandidate = assetRoot == null ? markdown.getParent() : assetRoot.toAbsolutePath().normalize();
+            if (rootCandidate == null || !Files.isDirectory(rootCandidate)) throw new IOException("asset root is not a directory");
+            Path root = rootCandidate.toRealPath();
+            Path base = markdown.getParent().toRealPath();
+            Path output = LocalAssetPaths.canonicalPotentialPath(outputFile);
+            return new LocalAssetResolver(root, base, output);
+        } catch (IOException ex) {
+            throw new AssetAccessException("E_IMAGE_READ", "Asset root or output path could not be resolved.", ex);
+        }
+    }
+
+    @Override public synchronized String reference(String decodedRelativePath) {
+        Path candidate = base.resolve(Paths.get(decodedRelativePath)).normalize();
+        referencedCandidates.add(candidate);
+        try {
+            Path canonical = LocalAssetPaths.canonicalPotentialPath(candidate);
+            if (!LocalAssetPaths.isWithin(root, canonical)) {
+                throw new AssetAccessException("E_ASSET_OUTSIDE_ROOT", "Image asset resolves outside the configured asset root: " + decodedRelativePath);
+            }
+            if (outputFile == null) {
+                throw new AssetAccessException("E_IMAGE_REFERENCE", "A local image reference requires an HTML output path.");
+            }
+            return LocalAssetPaths.relativeImageHref(outputFile, candidate);
+        } catch (AssetAccessException ex) {
+            throw ex;
+        } catch (IOException | RuntimeException ex) {
+            throw new AssetAccessException("E_IMAGE_READ", "Image asset path could not be resolved: " + decodedRelativePath, ex);
         }
     }
 
@@ -91,6 +126,33 @@ public final class LocalAssetResolver implements AssetResolver {
             throw ex;
         } catch (IOException ex) {
             throw new AssetAccessException("E_IMAGE_READ", "Image asset could not be read.", ex);
+        }
+    }
+
+    @Override public synchronized byte[] readPrefix(String id, long maxBytes) {
+        if (maxBytes < 1) throw new IllegalArgumentException("readPrefix maxBytes must be positive.");
+        Record record = records.get(id);
+        if (record == null) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset was not described before reading.");
+        try {
+            Path current = record.path.toRealPath();
+            BasicFileAttributes before = Files.readAttributes(current, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            if (!current.startsWith(root) || !same(record, before)) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset changed after inspection.");
+            int length = (int) Math.min(maxBytes, record.size);
+            byte[] bytes = new byte[length];
+            try (java.nio.channels.SeekableByteChannel channel = Files.newByteChannel(current)) {
+                ByteBuffer buffer = ByteBuffer.wrap(bytes);
+                while (buffer.hasRemaining()) {
+                    int read = channel.read(buffer);
+                    if (read < 0) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset changed while its header was being read.");
+                }
+            }
+            BasicFileAttributes after = Files.readAttributes(current, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            if (!same(record, after)) throw new AssetAccessException("E_ASSET_CHANGED", "Image asset changed while its header was being read.");
+            return bytes;
+        } catch (AssetAccessException ex) {
+            throw ex;
+        } catch (IOException ex) {
+            throw new AssetAccessException("E_IMAGE_READ", "Image asset prefix could not be read.", ex);
         }
     }
 

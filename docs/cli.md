@@ -1,11 +1,11 @@
 # CLI Reference
 
 The Java CLI targets the option names and exit-code intent of upstream
-`miku-md2html` v0.4.0. The Java artifact is version `0.3.6`; its help
+`miku-md2html` v0.4.0. The Java artifact is version `0.4.1`; its help
 text uses Java jar invocation syntax.
 
 ```text
-java -jar miku-md2html-java-0.3.6.jar <input.md> --out <output.html> [options]
+java -jar miku-md2html-java-0.4.1.jar <input.md> --out <output.html> [options]
 ```
 
 Options:

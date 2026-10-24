@@ -1,0 +1,1 @@
+![remote](https://example.invalid/a.png)

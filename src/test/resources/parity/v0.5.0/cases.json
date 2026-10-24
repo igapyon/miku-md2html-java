@@ -1,0 +1,298 @@
+{
+  "cases": [
+    {
+      "id": "ref-png",
+      "mode": "reference",
+      "scenario": "png",
+      "markdown": "![pixel](pixel.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-png.md"
+    },
+    {
+      "id": "embed-png",
+      "mode": "embed",
+      "scenario": "png",
+      "markdown": "![pixel](pixel.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-png.md"
+    },
+    {
+      "id": "ref-svg",
+      "mode": "reference",
+      "scenario": "svg",
+      "markdown": "![vector](image.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-svg.md"
+    },
+    {
+      "id": "embed-svg",
+      "mode": "embed",
+      "scenario": "svg",
+      "markdown": "![vector](image.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-svg.md"
+    },
+    {
+      "id": "ref-svg-named-png",
+      "mode": "reference",
+      "scenario": "svg-named-png",
+      "markdown": "![vector](image.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-svg-named-png.md"
+    },
+    {
+      "id": "embed-svg-named-png",
+      "mode": "embed",
+      "scenario": "svg-named-png",
+      "markdown": "![vector](image.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-svg-named-png.md"
+    },
+    {
+      "id": "ref-data-png",
+      "mode": "reference",
+      "scenario": "data-png",
+      "markdown": "![pixel](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/odcAAAAASUVORK5CYII=)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-data-png.md"
+    },
+    {
+      "id": "embed-data-png",
+      "mode": "embed",
+      "scenario": "data-png",
+      "markdown": "![pixel](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/odcAAAAASUVORK5CYII=)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-data-png.md"
+    },
+    {
+      "id": "ref-raw-img",
+      "mode": "reference",
+      "scenario": "png",
+      "markdown": "<img src=\"pixel.png\" alt=\"画素\" title=\"tiny\" width=\"1\" height=\"1\">",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-raw-img.md"
+    },
+    {
+      "id": "embed-raw-img",
+      "mode": "embed",
+      "scenario": "png",
+      "markdown": "<img src=\"pixel.png\" alt=\"画素\" title=\"tiny\" width=\"1\" height=\"1\">",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-raw-img.md"
+    },
+    {
+      "id": "ref-missing-png",
+      "mode": "reference",
+      "scenario": "missing-png",
+      "markdown": "![missing](missing.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-missing-png.md"
+    },
+    {
+      "id": "embed-missing-png",
+      "mode": "embed",
+      "scenario": "missing-png",
+      "markdown": "![missing](missing.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-missing-png.md"
+    },
+    {
+      "id": "ref-missing-svg",
+      "mode": "reference",
+      "scenario": "missing-svg",
+      "markdown": "![missing](missing.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-missing-svg.md"
+    },
+    {
+      "id": "embed-missing-svg",
+      "mode": "embed",
+      "scenario": "missing-svg",
+      "markdown": "![missing](missing.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-missing-svg.md"
+    },
+    {
+      "id": "ref-invalid-png",
+      "mode": "reference",
+      "scenario": "invalid-png",
+      "markdown": "![invalid](invalid.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-invalid-png.md"
+    },
+    {
+      "id": "embed-invalid-png",
+      "mode": "embed",
+      "scenario": "invalid-png",
+      "markdown": "![invalid](invalid.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-invalid-png.md"
+    },
+    {
+      "id": "ref-outside",
+      "mode": "reference",
+      "scenario": "outside",
+      "markdown": "![outside](../outside.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-outside.md"
+    },
+    {
+      "id": "embed-outside",
+      "mode": "embed",
+      "scenario": "outside",
+      "markdown": "![outside](../outside.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-outside.md"
+    },
+    {
+      "id": "ref-remote",
+      "mode": "reference",
+      "scenario": "remote",
+      "markdown": "![remote](https://example.invalid/a.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-remote.md"
+    },
+    {
+      "id": "embed-remote",
+      "mode": "embed",
+      "scenario": "remote",
+      "markdown": "![remote](https://example.invalid/a.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-remote.md"
+    },
+    {
+      "id": "ref-unsafe-svg",
+      "mode": "reference",
+      "scenario": "unsafe-svg",
+      "markdown": "![unsafe](unsafe.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-unsafe-svg.md"
+    },
+    {
+      "id": "embed-unsafe-svg",
+      "mode": "embed",
+      "scenario": "unsafe-svg",
+      "markdown": "![unsafe](unsafe.svg)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-unsafe-svg.md"
+    },
+    {
+      "id": "ref-repeated-alias",
+      "mode": "reference",
+      "scenario": "repeated-alias",
+      "markdown": "![first](pixel.png)\n\n![alias](alias.png)\n\n![again](pixel.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/ref-repeated-alias.md"
+    },
+    {
+      "id": "embed-repeated-alias",
+      "mode": "embed",
+      "scenario": "repeated-alias",
+      "markdown": "![first](pixel.png)\n\n![alias](alias.png)\n\n![again](pixel.png)",
+      "scope": [
+        "core",
+        "cli"
+      ],
+      "input": "inputs/embed-repeated-alias.md"
+    },
+    {
+      "id": "ref-no-reference",
+      "mode": "reference",
+      "scenario": "old-png",
+      "markdown": "![pixel](pixel.png)",
+      "scope": [
+        "core"
+      ],
+      "input": "inputs/ref-no-reference.md"
+    },
+    {
+      "id": "embed-old-resolver",
+      "mode": "embed",
+      "scenario": "old-png",
+      "markdown": "![pixel](pixel.png)",
+      "scope": [
+        "core"
+      ],
+      "input": "inputs/embed-old-resolver.md"
+    },
+    {
+      "id": "ref-svg-old-resolver",
+      "mode": "reference",
+      "scenario": "old-svg",
+      "markdown": "![vector](image.svg)",
+      "scope": [
+        "core"
+      ],
+      "input": "inputs/ref-svg-old-resolver.md"
+    }
+  ]
+}

@@ -16,6 +16,7 @@ public final class MikuMd2htmlCli {
             + "  --title <text>           Override the document title.\n"
             + "  --lang <tag>             Set the document language (default: ja).\n"
             + "  --asset-root <directory> Allow local image files under this directory.\n"
+            + "  --image-mode <mode>      Image mode: reference (default) or embed (portable HTML).\n"
             + "  --no-toc                 Omit the generated table of contents.\n"
             + "  --max-output-mib <n>     HTML size limit from 1 through 1024 MiB (default: 100).\n"
             + "  --report-json <file>     Write a versioned JSON result report.\n"

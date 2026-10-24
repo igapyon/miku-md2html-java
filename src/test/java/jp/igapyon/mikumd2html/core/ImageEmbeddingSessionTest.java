@@ -43,11 +43,8 @@ class ImageEmbeddingSessionTest {
         ImageEmbeddingSession session = new ImageEmbeddingSession(resolver, diagnostics, 1_000_000L);
 
         session.renderImage("pixel", "pixel.png", null, 1, 1);
-        String fallback = session.renderImage("alias", "alias.png", null, 2, 1);
-
-        assertEquals("alias", fallback);
+        assertThrows(IllegalStateException.class, () -> session.renderImage("alias", "alias.png", null, 2, 1));
         assertEquals(1, resolver.readCalls);
-        assertEquals("E_ASSET_CHANGED", diagnostics.get(0).getCode());
     }
 
     @Test void mapsInvalidResolverMetadataToImageReadErrorAndPropagatesUnexpectedFailures() {
@@ -57,8 +54,8 @@ class ImageEmbeddingSessionTest {
             @Override public byte[] read(String id, long maxBytes) { throw new AssertionError("read must not be called"); }
         };
         ImageEmbeddingSession session = new ImageEmbeddingSession(invalid, diagnostics, 1_000_000L);
-        session.renderImage("pixel", "pixel.png", null, 1, 1);
-        assertEquals("E_IMAGE_READ", diagnostics.get(0).getCode());
+        assertThrows(IllegalStateException.class, () -> session.renderImage("pixel", "pixel.png", null, 1, 1));
+        assertTrue(diagnostics.isEmpty());
 
         AssetResolver broken = new AssetResolver() {
             @Override public AssetInfo describe(String path) { throw new IllegalStateException("resolver contract failure"); }

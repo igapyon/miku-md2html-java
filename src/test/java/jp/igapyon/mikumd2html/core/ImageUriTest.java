@@ -37,6 +37,7 @@ class ImageUriTest {
 
     private static ConvertResult convert(String destination, List<String> paths) {
         ConvertOptions options = new ConvertOptions();
+        options.setImageMode("embed");
         options.setAssets(new AssetResolver() {
             @Override public AssetInfo describe(String relativePath) {
                 paths.add(relativePath);

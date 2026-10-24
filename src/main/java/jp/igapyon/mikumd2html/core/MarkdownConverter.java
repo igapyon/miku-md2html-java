@@ -17,6 +17,7 @@ public final class MarkdownConverter {
         ConvertOptions options = suppliedOptions == null ? new ConvertOptions() : suppliedOptions;
         String titleOverride = trimOrNull(options.getTitle());
         String langOverride = trimOrNull(options.getLang());
+        String imageMode = options.getImageMode();
         long maxBytes = options.getMaxOutputBytes();
         if (source == null || inputName == null || inputName.trim().isEmpty() || inputName.matches(".*[\\\\/\\x00].*")) {
             Diagnostics.add(diagnostics, "error", "E_OPTIONS", "Request must include Markdown text and a plain input filename.", null, null);
@@ -27,6 +28,9 @@ public final class MarkdownConverter {
         }
         if (langOverride != null && !LANGUAGE.matcher(langOverride).matches()) {
             Diagnostics.add(diagnostics, "error", "E_OPTIONS", "Language must be a supported ASCII language tag.", null, null);
+        }
+        if (!"reference".equals(imageMode) && !"embed".equals(imageMode)) {
+            Diagnostics.add(diagnostics, "error", "E_OPTIONS", "imageMode must be reference or embed.", null, null);
         }
         if (maxBytes < 1 || maxBytes > MAX_OUTPUT_BYTES) {
             Diagnostics.add(diagnostics, "error", "E_OPTIONS", "maxOutputBytes must be an integer from 1 through 1073741824.", null, null);
@@ -46,7 +50,7 @@ public final class MarkdownConverter {
         String lang = langOverride != null ? langOverride : front.getLang() != null ? front.getLang() : "ja";
         String description = front.getDescription();
         if (!front.isValid()) return failure("Untitled", lang, description, diagnostics, emptyStats());
-        ImageEmbeddingSession images = new ImageEmbeddingSession(options.getAssets(), diagnostics, maxBytes);
+        ImageEmbeddingSession images = new ImageEmbeddingSession(options.getAssets(), diagnostics, maxBytes, imageMode);
         MarkdownDocument document = new MarkdownParser(diagnostics, front.getLineOffset(), images).parse(front.getBody());
         List<DocumentStructure.Heading> headings = document.getHeadings();
         String firstH1 = null;
@@ -60,7 +64,7 @@ public final class MarkdownConverter {
                 : !fileTitle.isEmpty() ? fileTitle : "Untitled";
         String article = DocumentStructure.rewriteFragments(document.getArticleHtml(), headings, diagnostics, front.getLineOffset());
         String toc = options.isToc() ? DocumentStructure.renderToc(headings, lang) : "";
-        String html = new HtmlDocumentRenderer().render(article, toc, title, lang, description);
+        String html = new HtmlDocumentRenderer().render(article, toc, title, lang, description, imageMode);
         long htmlBytes = html.getBytes(StandardCharsets.UTF_8).length;
         if (htmlBytes > maxBytes) {
             Diagnostics.add(diagnostics, "error", "E_OUTPUT_TOO_LARGE", "Generated HTML exceeds the configured output limit.", null, null);
@@ -78,7 +82,7 @@ public final class MarkdownConverter {
     private static ConversionStats stats(int headings, ImageEmbeddingSession images, long htmlBytes) {
         return new ConversionStats(headings, images.getOccurrences(), images.getUniqueAssets(),
                 images.getUniqueSourceAssetBytes(), images.getEmbeddedPayloadBytes(), images.getEmbeddedOccurrences(),
-                0, images.getOmittedOccurrences(), htmlBytes);
+                images.getReferencedOccurrences(), images.getOmittedOccurrences(), htmlBytes);
     }
     private static ConvertResult failure(String title, String lang, String description, List<Diagnostic> diagnostics, ConversionStats stats) {
         return new ConvertResult(false, null, title, lang, description, Diagnostics.stable(diagnostics), stats);

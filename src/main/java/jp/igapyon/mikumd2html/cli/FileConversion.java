@@ -73,13 +73,14 @@ public final class FileConversion {
             byte[] input = readBounded(inputReal, cli.maxOutputBytes);
             inputBytes = input.length;
             String markdown = decodeUtf8(input);
-            assets = LocalAssetResolver.create(inputReal, cli.assetRoot);
+            assets = LocalAssetResolver.create(inputReal, cli.assetRoot, outputTarget);
             ConvertOptions options = new ConvertOptions();
             options.setTitle(cli.title);
             options.setLang(cli.lang);
             options.setToc(!cli.noToc);
             options.setMaxOutputBytes(cli.maxOutputBytes);
             options.setAssets(assets);
+            options.setImageMode(cli.imageMode);
             result = MikuMd2htmlCore.convertMarkdown(markdown, cli.input.getFileName().toString(), options);
             diagnostics.addAll(result.getDiagnostics());
             rejectAssetCollisions(assets, outputTarget, reportTarget);
@@ -259,7 +260,7 @@ public final class FileConversion {
                 .append(",\n  \"input\": {\"path\": \"").append(jsonEscape(cli.input.toString())).append('"');
         if (inputBytes != null) json.append(", \"bytes\": ").append(inputBytes.intValue());
         json.append("},\n  \"output\": {\"path\": \"").append(jsonEscape(cli.output.toString()))
-                .append("\", \"imageMode\": \"embed\", \"written\": ").append(outputWritten);
+                .append("\", \"imageMode\": \"").append(jsonEscape(cli.imageMode)).append("\", \"written\": ").append(outputWritten);
         if (outputWritten && result != null) json.append(", \"bytes\": ").append(result.getStats().getHtmlBytes());
         json.append("},\n  \"metadata\": {\"title\": \"").append(jsonEscape(result == null ? (cli.title == null ? "Untitled" : cli.title) : result.getTitle()))
                 .append("\", \"lang\": \"").append(jsonEscape(result == null ? (cli.lang == null ? "ja" : cli.lang) : result.getLang())).append('"');

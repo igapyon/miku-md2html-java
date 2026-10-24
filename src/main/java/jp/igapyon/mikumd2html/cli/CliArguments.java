@@ -13,7 +13,7 @@ public final class CliArguments {
     private static final Set<String> BOOLEAN_OPTIONS = new HashSet<String>();
     static {
         VALUE_OPTIONS.add("--out"); VALUE_OPTIONS.add("--title"); VALUE_OPTIONS.add("--lang");
-        VALUE_OPTIONS.add("--asset-root"); VALUE_OPTIONS.add("--max-output-mib"); VALUE_OPTIONS.add("--report-json");
+        VALUE_OPTIONS.add("--asset-root"); VALUE_OPTIONS.add("--max-output-mib"); VALUE_OPTIONS.add("--report-json"); VALUE_OPTIONS.add("--image-mode");
         BOOLEAN_OPTIONS.add("--no-toc"); BOOLEAN_OPTIONS.add("--force");
     }
     private CliArguments() { }
@@ -55,6 +55,8 @@ public final class CliArguments {
         if (title != null && title.trim().isEmpty()) throw new CliUsageException("--title must not be blank.");
         String lang = values.get("--lang");
         if (lang != null && !lang.trim().matches("[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*")) throw new CliUsageException("--lang must be an ASCII language tag such as ja or en-US.");
+        String imageMode = values.containsKey("--image-mode") ? values.get("--image-mode") : "reference";
+        if (!"reference".equals(imageMode) && !"embed".equals(imageMode)) throw new CliUsageException("--image-mode must be reference or embed.");
         String maxText = values.containsKey("--max-output-mib") ? values.get("--max-output-mib") : "100";
         if (!maxText.matches("[0-9]+")) throw new CliUsageException("--max-output-mib must be an integer from 1 through 1024.");
         long mib;
@@ -62,6 +64,7 @@ public final class CliArguments {
         if (mib < 1 || mib > 1024) throw new CliUsageException("--max-output-mib must be an integer from 1 through 1024.");
         return new CliOptions(Paths.get(input), Paths.get(output), title == null ? null : title.trim(), lang == null ? null : lang.trim(),
                 values.containsKey("--asset-root") ? Paths.get(values.get("--asset-root")) : null, flags.contains("--no-toc"),
-                mib * 1_048_576L, values.containsKey("--report-json") ? Paths.get(values.get("--report-json")) : null, flags.contains("--force"));
+                mib * 1_048_576L, values.containsKey("--report-json") ? Paths.get(values.get("--report-json")) : null,
+                flags.contains("--force"), imageMode);
     }
 }
