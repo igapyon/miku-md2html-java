@@ -1,7 +1,7 @@
 # GitHub Actions の導入と実装状況
 
 検討日・初回実装: 2026-10-24。workflow/helper をローカル実装し、静的検査とstage検証を行った。
-GitHub hosted workflow run とReleaseへの実uploadは未実施。
+初回のhosted CIはpackaged smokeで`rg`が見つからず失敗した。helperを`grep -F`へ変更し、hosted rerun待ち。Releaseへの実uploadは未実施。
 [Node v0.4.0 追従計画](upstream-v0.4.0-followup-plan.md) を補完する。
 
 ## 結論
@@ -85,7 +85,7 @@ GitHub の動作仕様と Action の現行 release は末尾の一次資料で�
 
 ## GA01 — CI baseline
 
-- 状態: workflowとsmoke helperをローカル実装済み。GitHub hosted run待ち。
+- 状態: 初回hosted runはsmoke helperの`rg`が見つからず停止。helperを`grep -F`へ変更済みで、hosted rerun待ち。
 - 通常JUnitにNodeは必須化していない。
 
 ### 実行内容
@@ -132,8 +132,9 @@ Windows/macOS の focused job として別途増やせる。
 - package 失敗、Java 8/25 の smoke 失敗は job failure になる。
 - CI concurrency は同一 PR/branch の古い run を中断する設定にする。
 - workflow/共通 helper 自体の変更も CI 対象にする。
-- YAML parsing、shell syntax、共通 helper のローカルsmoke、差分確認を行った。
-  GitHubでの初回実行確認はbranch公開後に行い、その結果を追記する。
+- workflow YAMLのparse確認は実施済み。今回の修正後、`bash -n`とJava 17での
+  packaged smokeが成功した。初回hosted runではsmoke helper内の`rg`がrunnerに無く失敗した。
+  helperを`grep -F`へ変更したため、hosted rerunでJava 8/25の結果を確認する。
 
 ## GA02 — Release asset workflow
 

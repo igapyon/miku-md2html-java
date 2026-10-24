@@ -6,7 +6,7 @@ Markdown and local images into one portable HTML file.
 
 The compatibility source is upstream `miku-md2html` v0.4.0, commit
 `b18a6e390425bd0e15387a2d608980a42a1809e9`. The Java artifact version is
-`0.4.1`; this identifies the shipped Java version and does not assert full Node
+`0.4.2`; this identifies the shipped Java version and does not assert full Node
 feature parity. A small set of runtime libraries is bundled in the executable
 JAR. Current coverage and known differences are listed in
 [remaining migration items](docs/remaining-migration-items.md).
@@ -16,7 +16,7 @@ JAR. Current coverage and known differences are listed in
 ```sh
 mvn -f pom.xml test
 mvn -f pom.xml package
-java -jar target/miku-md2html-java-0.4.1.jar --help
+java -jar target/miku-md2html-java-0.4.2.jar --help
 ```
 
 The executable JAR and local distribution ZIP are created under `target/`.

@@ -25,8 +25,8 @@ java -jar runtime.jar --version >version.stdout 2>version.stderr
 
 java -jar runtime.jar --help >help.stdout 2>help.stderr
 [[ ! -s help.stderr ]]
-rg -F -- "java -jar miku-md2html-java-$expected_version.jar <input.md> --out <output.html>" help.stdout >/dev/null
-rg -F -- "--report-json <file>" help.stdout >/dev/null
+grep -F -- "java -jar miku-md2html-java-$expected_version.jar <input.md> --out <output.html>" help.stdout >/dev/null
+grep -F -- "--report-json <file>" help.stdout >/dev/null
 
 cat > input.md <<'MARKDOWN'
 # Packaged smoke
@@ -36,8 +36,8 @@ MARKDOWN
 
 java -jar runtime.jar input.md --out output.html --report-json report.json >convert.stdout 2>convert.stderr
 [[ ! -s convert.stderr ]]
-rg -F -- '<h1 id="miku-h-packaged-smoke">Packaged smoke</h1>' output.html >/dev/null
-rg -F -- '<img src="data:image/png;base64,' output.html >/dev/null
+grep -F -- '<h1 id="miku-h-packaged-smoke">Packaged smoke</h1>' output.html >/dev/null
+grep -F -- '<img src="data:image/png;base64,' output.html >/dev/null
 python3 -c 'import json,sys; d=json.load(open("report.json", encoding="utf-8")); assert d["success"] is True; assert d["tool"]["version"] == sys.argv[1]; assert d["output"]["written"] is True; assert d["stats"]["imageOccurrences"] == 1; assert d["stats"]["uniqueAssets"] == 1' "$expected_version"
 
 cp output.html output.before.html
@@ -47,6 +47,6 @@ retry_status=$?
 set -e
 [[ $retry_status -eq 1 ]]
 cmp -s output.before.html output.html
-rg -F -- 'E_OUTPUT_EXISTS' retry.stderr >/dev/null
+grep -F -- 'E_OUTPUT_EXISTS' retry.stderr >/dev/null
 
 echo "Packaged runtime smoke passed for Java $(java -version 2>&1 | head -n 1)"
