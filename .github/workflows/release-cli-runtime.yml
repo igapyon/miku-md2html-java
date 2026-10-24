@@ -1,0 +1,88 @@
+name: Release CLI runtime assets
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-assets-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.prepare.outputs.version }}
+      runtime_asset_name: ${{ steps.prepare.outputs.runtime_asset_name }}
+      sources_asset_name: ${{ steps.prepare.outputs.sources_asset_name }}
+    steps:
+      - name: Check out the published tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - name: Set up build JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and stage exactly two release assets
+        id: prepare
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          bash scripts/prepare-release-assets.sh "$RELEASE_TAG" release-assets
+
+      - name: Smoke staged JAR on Java 8
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Verify Java 8 runtime
+        run: bash scripts/smoke-packaged-runtime.sh "release-assets/${{ steps.prepare.outputs.runtime_asset_name }}" "${{ steps.prepare.outputs.version }}"
+
+      - name: Smoke the same staged JAR on Java 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Verify Java 25 runtime
+        run: bash scripts/smoke-packaged-runtime.sh "release-assets/${{ steps.prepare.outputs.runtime_asset_name }}" "${{ steps.prepare.outputs.version }}"
+
+      - name: Upload only the staged release assets to the workflow artifact store
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: release-assets-${{ github.event.release.id }}
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 1
+
+  attach-to-release:
+    needs: build-and-verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified assets
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-assets-${{ github.event.release.id }}
+          path: release-assets
+
+      - name: Attach the runtime and source JARs to the existing Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            release-assets/${{ needs.build-and-verify.outputs.runtime_asset_name }}
+            release-assets/${{ needs.build-and-verify.outputs.sources_asset_name }}
+          fail_on_unmatched_files: true
+          overwrite_files: true

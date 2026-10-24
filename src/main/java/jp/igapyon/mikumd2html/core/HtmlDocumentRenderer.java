@@ -27,7 +27,9 @@ public final class HtmlDocumentRenderer {
         html.append("<title>").append(HtmlEscape.text(title)).append("</title>\n<style>\n").append(css)
                 .append("\n</style>\n</head>\n<body>\n<main>\n");
         if (toc != null && !toc.isEmpty()) html.append(toc).append('\n');
-        html.append("<article>\n").append(articleHtml).append("\n</article>\n</main>\n<script>")
+        html.append("<article>\n").append(articleHtml);
+        if (articleHtml == null || !articleHtml.endsWith("\n")) html.append('\n');
+        html.append("</article>\n</main>\n<script>")
                 .append(script).append("</script>\n</body>\n</html>\n");
         return html.toString();
     }

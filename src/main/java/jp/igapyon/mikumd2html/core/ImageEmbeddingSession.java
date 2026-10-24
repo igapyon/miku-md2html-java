@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -20,9 +21,13 @@ public final class ImageEmbeddingSession {
     private final List<Diagnostic> diagnostics;
     private final long maxAssetBytes;
     private int occurrences;
+    private int embeddedOccurrences;
     private long sourceBytes;
     private long payloadBytes;
     private final Set<String> unique = new HashSet<String>();
+    private final Set<String> warned = new HashSet<String>();
+    private final Map<String, AssetInfo> infoByPath = new LinkedHashMap<String, AssetInfo>();
+    private final Map<String, Long> lengthById = new HashMap<String, Long>();
     private final Map<String, byte[]> bytesById = new HashMap<String, byte[]>();
 
     public ImageEmbeddingSession(AssetResolver assets, List<Diagnostic> diagnostics, long maxAssetBytes) {
@@ -46,11 +51,23 @@ public final class ImageEmbeddingSession {
                 expectedMime = data.mime;
                 id = "data:" + sha256(bytes);
             } else {
+                if (trimmed.matches("(?is)^https?://.*") || trimmed.startsWith("//")) {
+                    throw new AssetAccessException("E_REMOTE_IMAGE", "Remote images are not supported.");
+                }
                 String path = decodeLocalPath(trimmed);
                 if (assets == null) throw new AssetAccessException("E_ASSET_RESOLVER_REQUIRED", "A local image requires an asset resolver.");
-                AssetInfo info = assets.describe(path);
+                AssetInfo info = infoByPath.get(path);
+                if (info == null) {
+                    info = assets.describe(path);
+                    if (info != null) infoByPath.put(path, info);
+                }
                 if (info == null || info.getId() == null || info.getByteLength() < 0) throw new AssetAccessException("E_IMAGE_READ", "Image resolver returned invalid metadata.");
                 id = info.getId();
+                Long previousLength = lengthById.get(id);
+                if (previousLength != null && previousLength.longValue() != info.getByteLength()) {
+                    throw new AssetAccessException("E_ASSET_CHANGED", "Image resolver returned inconsistent sizes for the same asset.");
+                }
+                lengthById.put(id, info.getByteLength());
                 label = info.getLabel() == null ? path : info.getLabel();
                 if (!bytesById.containsKey(id)) {
                     bytes = assets.read(id, maxAssetBytes);
@@ -59,14 +76,19 @@ public final class ImageEmbeddingSession {
                 } else bytes = bytesById.get(id);
             }
             ImageInspector.Info info = ImageInspector.inspect(bytes, expectedMime);
+            embeddedOccurrences++;
             String actualId = expectedMime == null && id.startsWith("data:") ? "data:" + sha256(bytes) : id;
             if (unique.add(actualId)) sourceBytes += bytes.length;
             payloadBytes += ((bytes.length + 2L) / 3L) * 4L;
-            if (bytes.length > 5L * 1_048_576L) {
+            if (bytes.length > 5L * 1_048_576L && warned.add(actualId + ":bytes")) {
                 Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE", "Image exceeds 5 MiB and is embedded at its original size.", label, position);
             }
-            if (info.getWidth() > 0 && info.getHeight() > 0 && (long) info.getWidth() * info.getHeight() > 40_000_000L) {
-                Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position);
+            if (info.getWidth() > 0 && info.getHeight() > 0 && info.getWidth() > 40_000_000L / info.getHeight()
+                    && warned.add(actualId + ":pixels")) {
+                java.util.Map<String, Object> dimensions = new java.util.LinkedHashMap<String, Object>();
+                dimensions.put("width", info.getWidth());
+                dimensions.put("height", info.getHeight());
+                Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, dimensions);
             }
             StringBuilder html = new StringBuilder("<img src=\"data:").append(info.getMime()).append(";base64,")
                     .append(Base64.getEncoder().encodeToString(bytes)).append("\" alt=\"")
@@ -76,13 +98,12 @@ public final class ImageEmbeddingSession {
         } catch (AssetAccessException ex) {
             Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), label, position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
-        } catch (Exception ex) {
-            Diagnostics.add(diagnostics, "error", "E_IMAGE_INVALID", "Image data could not be safely inspected.", label, position);
-            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
     }
 
     public int getOccurrences() { return occurrences; }
+    public int getEmbeddedOccurrences() { return embeddedOccurrences; }
+    public int getOmittedOccurrences() { return occurrences - embeddedOccurrences; }
     public int getUniqueAssets() { return unique.size(); }
     public long getUniqueSourceAssetBytes() { return sourceBytes; }
     public long getEmbeddedPayloadBytes() { return payloadBytes; }
@@ -138,10 +159,14 @@ public final class ImageEmbeddingSession {
         }
     }
 
-    private static String sha256(byte[] bytes) throws Exception {
-        byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
-        StringBuilder text = new StringBuilder();
-        for (byte b : digest) text.append(String.format(Locale.ROOT, "%02x", b & 255));
-        return text.toString();
+    private static String sha256(byte[] bytes) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder text = new StringBuilder();
+            for (byte b : digest) text.append(String.format(Locale.ROOT, "%02x", b & 255));
+            return text.toString();
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable.", ex);
+        }
     }
 }

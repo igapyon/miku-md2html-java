@@ -29,6 +29,9 @@ public final class Slug {
             pendingHyphen = false;
             result.appendCodePoint(codePoint);
         }
+        String collapsed = result.toString().replaceAll("-+", "-");
+        result.setLength(0);
+        result.append(collapsed);
         while (result.length() > 0 && result.charAt(result.length() - 1) == '-') result.setLength(result.length() - 1);
         return result.length() == 0 ? "section" : result.toString();
     }

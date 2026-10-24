@@ -1,0 +1,94 @@
+Third-party runtime components bundled in miku-md2html-java
+===========================================================
+
+Direct runtime dependencies (10):
+  com.vladsch.flexmark:flexmark:0.62.2 and the five enabled flexmark extensions
+  org.jsoup:jsoup:1.23.2
+  org.snakeyaml:snakeyaml-engine:2.10
+  com.helger:ph-css:6.5.0
+  org.slf4j:slf4j-nop:1.7.32
+
+The executable JAR also contains these runtime transitive components:
+  com.vladsch.flexmark:flexmark-util, flexmark-util-ast, flexmark-util-builder,
+    flexmark-util-collection, flexmark-util-data, flexmark-util-dependency,
+    flexmark-util-format, flexmark-util-html, flexmark-util-misc,
+    flexmark-util-options, flexmark-util-sequence, flexmark-util-visitor:0.62.2
+  org.nibor.autolink:autolink:0.6.0
+  org.jetbrains:annotations:15.0
+  com.google.code.findbugs:jsr305:3.0.2
+  com.helger.commons:ph-commons:10.1.6
+  org.slf4j:slf4j-api:1.7.32
+
+License notices
+---------------
+
+Apache License 2.0 components:
+  SnakeYAML Engine, ph-css, ph-commons, JetBrains Annotations, and jsr305.
+  The Apache License 2.0 text is included
+  as META-INF/LICENSE in this JAR and as LICENSE in the source repository.
+
+ph-css and ph-commons NOTICE:
+  This product includes Open Source Software developed by Philip Helger
+  (https://www.helger.com/) and phloc systems (http://www.phloc.com/).
+  ph-commons also includes/uses software developed by the Apache Software
+  Foundation: Abdera I18N, commons-primitives, commons-codec, and commons-lang3;
+  Robert Harder's Base64; and OpenCSV from Bytecode Pty Ltd.
+
+BSD 2-Clause License components:
+  flexmark-java core, extensions, and utility modules.
+
+  Copyright (c) 2015-2016, Atlassian Pty Ltd
+  Copyright (c) 2016-2018, Vladimir Schneider
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
+
+MIT License components:
+  autolink-java, SLF4J API, and SLF4J NOP binding.
+
+  Copyright (c) 2015 Robin Stocker
+  Copyright (c) 2004-2017 QOS.ch
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+MIT License component:
+  jsoup. Its full license notice is bundled at META-INF/jsoup/LICENSE.
+
+Other copyright notices and license texts are available from the component
+repositories identified by the Maven coordinates above. The Apache-2.0 project
+license for miku-md2html-java is also included in the repository LICENSE file.

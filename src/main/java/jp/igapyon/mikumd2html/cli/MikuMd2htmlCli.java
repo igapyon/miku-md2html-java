@@ -22,7 +22,7 @@ public final class MikuMd2htmlCli {
             + "  --force                  Replace existing regular output/report files.\n"
             + "  --help                   Show this help.\n"
             + "  --version                Show the full package version.\n"
-            + "\nRemote images are rejected. Runtime dependencies are limited to the Java standard library.\n"
+            + "\nRemote images are rejected. Required third-party libraries are bundled in the executable JAR.\n"
             + "Success writes a one-line summary to stdout; diagnostics go to stderr. Exit codes: 0 success, 1 conversion/I/O failure, 2 usage error, 3 internal error.\n"
             + "\nExample:\n"
             + "  java -jar miku-md2html-java-" + MikuMd2htmlMetadata.VERSION + ".jar ./guide.md --out ./out/guide.html\n";
