@@ -17,7 +17,7 @@
 - Pinned Node runtime bundle SHA-256:
   `4c5aaeac024b5c31c003e2df40d66d8e8d2e5ad4a4fbe4c2222619c83290f16c`.
 - Local read-only checkout used for source and oracle work: `../miku-md2html`.
-- Product artifact version is `0.4.1`; compatibility baseline and implementation
+- Product artifact version is `0.4.2`; compatibility baseline and implementation
   status are tracked separately in [upstream snapshot](upstream-snapshot.md).
 - Sister Java references checked: `../miku-md2docx-java` and
   `../miku-md2pptx-java`. They inform the single-module runtime, testable CLI,
@@ -31,10 +31,10 @@
 ```sh
 mvn -f pom.xml test
 mvn -f pom.xml package
-java -jar target/miku-md2html-java-0.4.1.jar --version
-bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.4.1.jar 0.4.1
+java -jar target/miku-md2html-java-0.4.2.jar --version
+bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.4.2.jar 0.4.2
 node scripts/capture-node-parity.mjs
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.4.1.jar
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.4.2.jar
 ```
 
 The Node capture/comparison scripts are maintainer tools. Regular JUnit tests
