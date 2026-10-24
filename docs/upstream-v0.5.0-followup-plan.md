@@ -19,7 +19,7 @@ workflow、依存、バージョン、互換性基準は変更していなかっ
 | CLI SHA-256 | `c5af81eccba1ecddc348533e40517a2dbcfa92af552b6d7a02616421fcbc9b78` |
 | 調査に使ったNode checkout | `../miku-md2html`。上記commitと一致、tracked変更なし。両bundleのhashも上記と一致 |
 | 調査時Java HEAD | `6f36609f755cd85e1abab215d1ba875600730865` |
-| Java artifact / 現在の互換性基準 | `0.4.2` / Node `v0.4.0`、`b18a6e390425bd0e15387a2d608980a42a1809e9` |
+| Java artifact / 現在の互換性基準 | `0.5.0` / Node `v0.4.0`、`b18a6e390425bd0e15387a2d608980a42a1809e9` |
 | Java公開入口 | `jp.igapyon.mikumd2html.core.MikuMd2htmlCore.convertMarkdown` |
 | CLI | `jp.igapyon.mikumd2html.cli.MikuMd2htmlCli` |
 | 維持する配布条件 | Java 8 source/binary/runtime、Maven、JUnit Jupiter、単一fat JAR、sources JAR |
@@ -29,10 +29,10 @@ CSP、出力保護をJavaのCoreとCLIで再現すること。
 下記の合格条件を満たした後に、互換性の参照先をv0.5.0へ進める。
 **参照先の更新は完全互換の宣言ではない。**
 
-Java artifactの版はNode版とは独立している。`0.4.1`を初期版とし、現在は`0.4.2`。
-実装中は現在の版を維持し、互換性とGitHub Actionsを確認できる中間リリースでpatchを
-進める。Node `v0.5.0`相当の実装とGitHub Actions workflowの検証が完了したリリースを
-`0.5.0`とする。Node版をJava版へそのまま転記しない。
+Java artifactの版はNode版とは独立しており、現在は`0.5.0`。
+この版番号はNode `v0.5.0`相当の実装完了を示すものではない。互換性基準はNode
+`v0.4.0`のままとし、本計画の合格条件とGitHub Actions workflowの検証が完了した後に
+`v0.5.0`へ更新する。Node版をJava版へそのまま転記しない。
 
 ## 2. 調査結果と今回の範囲
 
@@ -327,7 +327,7 @@ git -C ../miku-md2html status --short --branch
 git -C ../miku-md2html rev-parse HEAD
 shasum -a 256 ../miku-md2html/bundle/miku-md2html-runtime.mjs ../miku-md2html/bundle/miku-md2html.mjs
 mvn -B -ntp package
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.4.2.jar
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.5.0.jar
 ```
 
 旧比較は文書上4/5一致、`commonmark-gfm`がHTML/関連htmlBytesで不一致。
@@ -345,7 +345,7 @@ upstreamへcommit/reset/install/buildを行うことを前提にしない。
 
 ```sh
 node scripts/capture-node-v0.5.0-parity.mjs --upstream ../miku-md2html
-node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.4.2.jar
+node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.5.0.jar
 ```
 
 captureはNode22以上のmaintainer toolとし、HEAD、clean状態、runtime/CLI hash、
@@ -494,9 +494,9 @@ P09では新機能に必要な検査だけを加える。
 
 ```sh
 mvn -B -ntp package
-bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.4.2.jar 0.4.2
-node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.4.2.jar
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.4.2.jar
+bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.5.0.jar 0.5.0
+node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.5.0.jar
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.5.0.jar
 git diff --check
 git status --short
 ```

@@ -11,12 +11,11 @@
   update the compatibility source only after the v0.5.0 acceptance checks.
 
 This is a plan for the Node v0.5.0 follow-up. The compatibility baseline
-remains Node v0.4.0 and the Java artifact is now `0.4.2`.
+remains Node v0.4.0 and the Java artifact is now `0.5.0`.
 
-Version policy: keep the current `0.4.x` version during implementation work.
-Use patch versions for verifiable intermediate compatibility and GitHub Actions
-checkpoints. Set the completed release to `0.5.0` after Node v0.5.0 equivalence
-and workflow validation are complete.
+The Java artifact version does not declare Node v0.5.0 equivalence. Keep Node
+v0.4.0 as the compatibility baseline until the v0.5.0 acceptance checks and
+GitHub Actions workflow validation are complete.
 
 ## Node v0.4.0 Follow-up
 
@@ -29,5 +28,5 @@ and workflow validation are complete.
 - [ ] Do not bump the Java artifact version or claim full parity as part of this follow-up without a separate explicit release decision.
 
 The current compatibility source is Node v0.4.0 at the pinned commit, while the
-Java artifact is `0.4.2`. See [implementation status](docs/remaining-migration-items.md)
+Java artifact is `0.5.0`. See [implementation status](docs/remaining-migration-items.md)
 and the [gap analysis](docs/upstream-v0.4.0-gap-analysis.md).
