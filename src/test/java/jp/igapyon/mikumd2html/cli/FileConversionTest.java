@@ -132,6 +132,68 @@ class FileConversionTest {
         assertEquals("", new String(stdout.toByteArray(), StandardCharsets.UTF_8));
     }
 
+    @Test void invalidFrontMatterScanPreventsFailureReportFromOverwritingReferencedImage() throws Exception {
+        Path input = temp.resolve("article.md");
+        Path output = temp.resolve("article.html");
+        Path report = temp.resolve("report.json");
+        byte[] originalImage = new byte[] { 11, 22, 33, 44 };
+        Files.write(report, originalImage);
+        Files.write(input, ("---\ntitle: first\ntitle: duplicate\n---\n![image](report.json)\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        CliOptions forced = new CliOptions(input, output, null, null, null, false,
+                16L * 1_048_576L, report, true, "reference");
+        int exit = FileConversion.run(forced, stream(stdout), stream(stderr));
+
+        assertEquals(1, exit);
+        assertArrayEquals(originalImage, Files.readAllBytes(report));
+        assertFalse(Files.exists(output));
+        assertTrue(new String(stderr.toByteArray(), StandardCharsets.UTF_8).contains("E_OUTPUT_COLLISION"));
+    }
+
+    @Test void forceCannotReplaceAnImageUsedAsHtmlOutput() throws Exception {
+        Path input = temp.resolve("article.md");
+        Path output = temp.resolve("asset.png");
+        byte[] originalImage = new byte[] { 21, 22, 23, 24 };
+        Files.write(output, originalImage);
+        Files.write(input, "![image](asset.png)\n".getBytes(StandardCharsets.UTF_8));
+
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        CliOptions forced = new CliOptions(input, output, null, null, null, false,
+                16L * 1_048_576L, null, true, "reference");
+        int exit = FileConversion.run(forced, stream(stdout), stream(stderr));
+
+        assertEquals(1, exit);
+        assertArrayEquals(originalImage, Files.readAllBytes(output));
+        assertTrue(new String(stderr.toByteArray(), StandardCharsets.UTF_8).contains("E_OUTPUT_COLLISION"));
+    }
+
+    @Test void forceCannotReplaceAnImageThroughAReportHardLink() throws Exception {
+        Path input = temp.resolve("article.md");
+        Path output = temp.resolve("article.html");
+        Path image = temp.resolve("asset.png");
+        Path report = temp.resolve("report.json");
+        byte[] originalImage = new byte[] { 31, 32, 33, 34 };
+        Files.write(image, originalImage);
+        Files.createLink(report, image);
+        Files.write(input, "![image](asset.png)\n".getBytes(StandardCharsets.UTF_8));
+
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        CliOptions forced = new CliOptions(input, output, null, null, null, false,
+                16L * 1_048_576L, report, true, "reference");
+        int exit = FileConversion.run(forced, stream(stdout), stream(stderr));
+
+        assertEquals(1, exit);
+        assertArrayEquals(originalImage, Files.readAllBytes(image));
+        assertArrayEquals(originalImage, Files.readAllBytes(report));
+        assertFalse(Files.exists(output));
+        assertTrue(new String(stderr.toByteArray(), StandardCharsets.UTF_8).contains("E_OUTPUT_COLLISION"));
+    }
+
     private CliOptions options(Path input, Path output, Path report) {
         return new CliOptions(input, output, null, null, null, false, 16L * 1_048_576L, report, false);
     }

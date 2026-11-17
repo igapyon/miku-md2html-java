@@ -6,17 +6,22 @@ Markdown and local images into one portable HTML file.
 
 The compatibility source is upstream `miku-md2html` v0.4.0, commit
 `b18a6e390425bd0e15387a2d608980a42a1809e9`. The Java artifact version is
-`0.5.0`; this identifies the shipped Java version and does not assert full Node
-feature parity. A small set of runtime libraries is bundled in the executable
-JAR. Current coverage and known differences are listed in
+`0.6.0`, aligned to the upstream v0.6.0 version number. This is a version
+alignment only: it does not assert full Node v0.6.0 parity, and the compatibility
+baseline remains v0.4.0. A small set of runtime libraries is bundled in the
+executable JAR. Current coverage and known differences are listed in
 [remaining migration items](docs/remaining-migration-items.md).
+
+The renderer also adopts the Node v0.6.0 rules for placing the generated table
+of contents after a leading article H1 and limiting structural blank lines.
+This selective update does not advance the compatibility source from v0.4.0.
 
 ## Build and Run
 
 ```sh
 mvn -f pom.xml test
 mvn -f pom.xml package
-java -jar target/miku-md2html-java-0.5.0.jar --help
+java -jar target/miku-md2html-java-0.6.0.jar --help
 ```
 
 The executable JAR and local distribution ZIP are created under `target/`.

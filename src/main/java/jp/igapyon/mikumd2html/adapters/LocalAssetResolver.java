@@ -16,10 +16,11 @@ import java.util.List;
 import java.util.Map;
 import jp.igapyon.mikumd2html.core.AssetAccessException;
 import jp.igapyon.mikumd2html.core.AssetInfo;
+import jp.igapyon.mikumd2html.core.ImageReferenceTracker;
 import jp.igapyon.mikumd2html.core.PrefixAssetResolver;
 
 /** Local filesystem adapter with both lexical and canonical root containment checks. */
-public final class LocalAssetResolver implements PrefixAssetResolver {
+public final class LocalAssetResolver implements PrefixAssetResolver, ImageReferenceTracker {
     private static final class Record {
         final Path path; final long size; final Object fileKey; final FileTime modified;
         Record(Path path, BasicFileAttributes attrs) { this.path = path; this.size = attrs.size(); this.fileKey = attrs.fileKey(); this.modified = attrs.lastModifiedTime(); }
@@ -30,6 +31,7 @@ public final class LocalAssetResolver implements PrefixAssetResolver {
     private final Path outputFile;
     private final Map<String, Record> records = new HashMap<String, Record>();
     private final java.util.Set<Path> referencedCandidates = new java.util.LinkedHashSet<Path>();
+    private boolean referenceScanComplete;
 
     private LocalAssetResolver(Path root, Path base, Path outputFile) { this.root = root; this.base = base; this.outputFile = outputFile; }
 
@@ -62,7 +64,7 @@ public final class LocalAssetResolver implements PrefixAssetResolver {
 
     @Override public synchronized String reference(String decodedRelativePath) {
         Path candidate = base.resolve(Paths.get(decodedRelativePath)).normalize();
-        referencedCandidates.add(candidate);
+        recordReference(decodedRelativePath);
         try {
             Path canonical = LocalAssetPaths.canonicalPotentialPath(candidate);
             if (!LocalAssetPaths.isWithin(root, canonical)) {
@@ -84,7 +86,7 @@ public final class LocalAssetResolver implements PrefixAssetResolver {
             Path relative = Paths.get(decodedRelativePath);
             if (relative.isAbsolute()) throw new AssetAccessException("E_IMAGE_URI", "The image path is not a supported relative URL path.");
             Path candidate = base.resolve(relative).normalize();
-            referencedCandidates.add(candidate);
+            recordReference(decodedRelativePath);
             if (!candidate.startsWith(root)) throw new AssetAccessException("E_ASSET_OUTSIDE_ROOT", "Image asset resolves outside the configured asset root: " + decodedRelativePath);
             Path canonical = candidate.toRealPath();
             if (!canonical.startsWith(root)) throw new AssetAccessException("E_ASSET_OUTSIDE_ROOT", "Image asset resolves outside the configured asset root: " + decodedRelativePath);
@@ -169,5 +171,17 @@ public final class LocalAssetResolver implements PrefixAssetResolver {
 
     public synchronized List<Path> getReferencedPaths() {
         return new ArrayList<Path>(referencedCandidates);
+    }
+
+    @Override public synchronized void recordReference(String decodedRelativePath) {
+        referencedCandidates.add(base.resolve(Paths.get(decodedRelativePath)).normalize());
+    }
+
+    @Override public synchronized void completeReferenceScan() {
+        referenceScanComplete = true;
+    }
+
+    @Override public synchronized boolean isReferenceScanComplete() {
+        return referenceScanComplete;
     }
 }

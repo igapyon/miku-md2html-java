@@ -84,9 +84,12 @@ public final class FileConversion {
             result = MikuMd2htmlCore.convertMarkdown(markdown, cli.input.getFileName().toString(), options);
             diagnostics.addAll(result.getDiagnostics());
             rejectAssetCollisions(assets, outputTarget, reportTarget);
+            if (result.isSuccess() && !assets.isReferenceScanComplete())
+                throw new AssetAccessException("E_INTERNAL", "Image reference scan did not complete.");
             if (!result.isSuccess()) {
                 printDiagnostics(diagnostics, err);
-                if (reportTarget != null) writeReport(reportTarget, reportJson(cli, false, 1, inputBytes, result, diagnostics, false), cli.force, err);
+                if (reportTarget != null && assets.isReferenceScanComplete())
+                    writeReport(reportTarget, reportJson(cli, false, 1, inputBytes, result, diagnostics, false), cli.force, err);
                 return 1;
             }
             outputStage = fileOperations.stage(outputTarget, result.getHtml().getBytes(StandardCharsets.UTF_8), "E_OUTPUT_WRITE");
@@ -123,7 +126,8 @@ public final class FileConversion {
         }
         printDiagnostics(diagnostics, err);
         int failureExitCode = hasDiagnostic(diagnostics, "E_INTERNAL") ? 3 : 1;
-        if (reportWritable && reportTarget != null && !hasDiagnostic(diagnostics, "E_OUTPUT_COLLISION"))
+        if (reportWritable && reportTarget != null && !hasDiagnostic(diagnostics, "E_OUTPUT_COLLISION")
+                && (assets == null || assets.isReferenceScanComplete()))
             writeReport(reportTarget, reportJson(cli, false, failureExitCode, inputBytes, result, diagnostics, false), cli.force, err);
         return failureExitCode;
     }

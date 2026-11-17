@@ -23,6 +23,8 @@ public final class ImageEmbeddingSession {
     private final List<Diagnostic> diagnostics;
     private final long maxAssetBytes;
     private final String imageMode;
+    private final boolean referenceScanOnly;
+    private SourcePosition currentEndPosition;
     private int occurrences;
     private int embeddedOccurrences;
     private int referencedOccurrences;
@@ -40,17 +42,31 @@ public final class ImageEmbeddingSession {
     }
 
     public ImageEmbeddingSession(AssetResolver assets, List<Diagnostic> diagnostics, long maxAssetBytes, String imageMode) {
+        this(assets, diagnostics, maxAssetBytes, imageMode, false);
+    }
+
+    ImageEmbeddingSession(AssetResolver assets, List<Diagnostic> diagnostics, long maxAssetBytes,
+            String imageMode, boolean referenceScanOnly) {
         this.assets = assets;
         this.diagnostics = diagnostics;
         this.maxAssetBytes = maxAssetBytes;
         this.imageMode = imageMode;
+        this.referenceScanOnly = referenceScanOnly;
     }
 
     public String renderImage(String altText, String destination, String title, int sourceLine, int sourceColumn) {
+        return renderImage(altText, destination, title,
+                new SourcePosition(Math.max(1, sourceLine), Math.max(1, sourceColumn)), null);
+    }
+
+    public String renderImage(String altText, String destination, String title,
+            SourcePosition sourcePosition, SourcePosition endPosition) {
         occurrences++;
+        if (referenceScanOnly) return scanLocalReference(altText, destination);
         String label = "markdown";
         boolean localSource = false;
-        SourcePosition position = new SourcePosition(Math.max(1, sourceLine), Math.max(1, sourceColumn));
+        SourcePosition position = sourcePosition == null ? new SourcePosition(1, 1) : sourcePosition;
+        currentEndPosition = endPosition;
         try {
             byte[] bytes;
             String expectedMime = null;
@@ -67,14 +83,16 @@ public final class ImageEmbeddingSession {
                     throw new AssetAccessException("E_REMOTE_IMAGE", "Remote images are not supported.");
                 }
                 String path = decodeLocalPath(trimmed);
+                recordReference(path);
                 if (assets == null) throw new AssetAccessException("E_ASSET_RESOLVER_REQUIRED", "A local image requires an asset resolver.");
                 AssetInfo info = infoByPath.get(path);
                 if (info == null) {
                     try {
                         info = assets.describe(path);
                     } catch (AssetAccessException ex) {
-                        if (!"reference".equals(imageMode) || !warnLocalError(ex, path, "markdown", position)) throw ex;
-                        if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || path.toLowerCase(Locale.ROOT).endsWith(".svg")) {
+                        if (!warnLocalError(ex, path, "markdown", position)) throw ex;
+                        if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode()))
+                                || "embed".equals(imageMode) || path.toLowerCase(Locale.ROOT).endsWith(".svg")) {
                             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
                         }
                         return makeReference(path, altText, position);
@@ -124,7 +142,7 @@ public final class ImageEmbeddingSession {
                 java.util.Map<String, Object> dimensions = new java.util.LinkedHashMap<String, Object>();
                 dimensions.put("width", info.getWidth());
                 dimensions.put("height", info.getHeight());
-                Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, dimensions);
+                addDiagnostic("warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, dimensions);
             }
             StringBuilder html = new StringBuilder("<img src=\"data:").append(info.getMime()).append(";base64,")
                     .append(Base64.getEncoder().encodeToString(bytes)).append("\" alt=\"")
@@ -132,7 +150,7 @@ public final class ImageEmbeddingSession {
             if (title != null && !title.isEmpty()) html.append("\" title=\"").append(HtmlEscape.attribute(title));
             return html.append("\">").toString();
         } catch (AssetAccessException ex) {
-            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
     }
@@ -144,6 +162,30 @@ public final class ImageEmbeddingSession {
     public int getUniqueAssets() { return unique.size(); }
     public long getUniqueSourceAssetBytes() { return sourceBytes; }
     public long getEmbeddedPayloadBytes() { return payloadBytes; }
+
+    public void completeReferenceScan() {
+        if (assets instanceof ImageReferenceTracker) ((ImageReferenceTracker) assets).completeReferenceScan();
+    }
+
+    private String scanLocalReference(String altText, String destination) {
+        String trimmed = destination == null ? "" : destination.trim();
+        if (trimmed.regionMatches(true, 0, "data:", 0, 5)
+                || trimmed.matches("(?is)^https?://.*") || trimmed.startsWith("//")) {
+            return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+        }
+        try {
+            recordReference(decodeLocalPath(trimmed));
+        } catch (AssetAccessException ignored) {
+            // Invalid image destinations are not filesystem candidates.
+        }
+        return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
+    }
+
+    private void recordReference(String decodedRelativePath) {
+        if (assets instanceof ImageReferenceTracker) {
+            ((ImageReferenceTracker) assets).recordReference(decodedRelativePath);
+        }
+    }
 
     private static final class DataImage {
         final String mime; final byte[] bytes;
@@ -186,7 +228,7 @@ public final class ImageEmbeddingSession {
                 if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || svgHint) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
                 return makeReference(path, altText, position);
             }
-            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
 
@@ -221,7 +263,7 @@ public final class ImageEmbeddingSession {
                 if ("W_ASSET_OUTSIDE_ROOT".equals(mappedWarning(ex.getCode())) || svgHint || "svg".equals(kind.getKind())) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
                 return makeReference(path, altText, position);
             }
-            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
         if (bytes.length != metadata.getByteLength()) {
@@ -235,14 +277,14 @@ public final class ImageEmbeddingSession {
             inspected = ImageInspector.inspect(bytes, null);
         } catch (AssetAccessException ex) {
             if (ex.getCode().startsWith("E_SVG_")) {
-                Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+                addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
                 return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
             }
             if (warnLocalError(ex, metadata.getId(), "markdown", position)) {
                 return ("raster".equals(kind.getKind()) || (!svgHint && "unknown".equals(kind.getKind())))
                         ? makeReference(path, altText, position) : HtmlEscape.text(InlineMarkdownParser.plainText(altText));
             }
-            Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+            addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
             return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
         }
         warnLarge(metadata.getId(), metadata.getByteLength(), inspected.getWidth(), inspected.getHeight(), "markdown", position, inspected.getMime().equals("image/svg+xml"));
@@ -277,7 +319,7 @@ public final class ImageEmbeddingSession {
                 throw ex;
             } catch (AssetAccessException ex) {
                 if (warnLocalError(ex, path, "markdown", position)) return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
-                Diagnostics.add(diagnostics, "error", ex.getCode(), ex.getMessage(), "markdown", position);
+                addDiagnostic("error", ex.getCode(), ex.getMessage(), "markdown", position);
                 return HtmlEscape.text(InlineMarkdownParser.plainText(altText));
             }
         }
@@ -294,7 +336,7 @@ public final class ImageEmbeddingSession {
 
     private void warnLarge(String id, long bytes, long width, long height, String label, SourcePosition position, boolean embedded) {
         if (bytes > 5L * 1_048_576L && warned.add(id + ":bytes")) {
-            Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE", embedded
+            addDiagnostic("warning", "W_LARGE_IMAGE", embedded
                     ? "Image exceeds 5 MiB and is embedded at its original size."
                     : "Image exceeds 5 MiB and is referenced from its original file.", label, position,
                     java.util.Collections.<String, Object>singletonMap("bytes", bytes));
@@ -302,13 +344,13 @@ public final class ImageEmbeddingSession {
         if (width > 0 && height > 0 && width > 40_000_000L / height && warned.add(id + ":pixels")) {
             java.util.Map<String, Object> details = new java.util.LinkedHashMap<String, Object>();
             details.put("width", width); details.put("height", height);
-            Diagnostics.add(diagnostics, "warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, details);
+            addDiagnostic("warning", "W_LARGE_IMAGE_DIMENSIONS", "Image exceeds 40 million pixels.", label, position, details);
         }
     }
 
     private void warnInspection(String key, long bytes, String message, SourcePosition position) {
         if (warned.add(key + ":inspection")) {
-            Diagnostics.add(diagnostics, "warning", "W_IMAGE_INSPECTION_SKIPPED", message, "markdown", position,
+            addDiagnostic("warning", "W_IMAGE_INSPECTION_SKIPPED", message, "markdown", position,
                     java.util.Collections.<String, Object>singletonMap("bytes", bytes));
         }
     }
@@ -325,7 +367,7 @@ public final class ImageEmbeddingSession {
             else if ("W_ASSET_OUTSIDE_ROOT".equals(code)) message = "A local image resolves outside the configured asset root and was omitted.";
             else if ("W_ASSET_CHANGED".equals(code)) message = "A local image changed during inspection.";
             else message = "A safe relative URL could not be created for a local image.";
-            Diagnostics.add(diagnostics, "warning", code, message, "markdown", position);
+            addDiagnostic("warning", code, message, "markdown", position);
         }
         return true;
     }
@@ -339,6 +381,15 @@ public final class ImageEmbeddingSession {
         if ("E_ASSET_CHANGED".equals(code)) return "W_ASSET_CHANGED";
         if ("E_IMAGE_REFERENCE".equals(code)) return "W_IMAGE_REFERENCE";
         return null;
+    }
+
+    private void addDiagnostic(String severity, String code, String message, String label, SourcePosition start) {
+        diagnostics.add(new Diagnostic(severity, code, message, label, start, currentEndPosition, null));
+    }
+
+    private void addDiagnostic(String severity, String code, String message, String label, SourcePosition start,
+            Map<String, Object> details) {
+        diagnostics.add(new Diagnostic(severity, code, message, label, start, currentEndPosition, details));
     }
 
     private static DataImage decodeDataUri(String value) {

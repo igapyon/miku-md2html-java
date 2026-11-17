@@ -1,5 +1,21 @@
 # Upstream Follow-up Log
 
+## 2026-11-17 — Node v0.6.0 renderer update
+
+- Inspected the Node `v0.6.0` release at commit
+  `4a0918713f8b94fffe8d447e809800a2e096cb84`. The v0.5.0-to-v0.6.0 source
+  delta adds leading-H1 TOC placement and structural formatting whitespace
+  limiting in HTML output.
+- Ported these behaviors to `HtmlDocumentRenderer` and the new
+  `HtmlStructuralWhitespace` helper. Jsoup source ranges limit replacements to
+  structural whitespace runs, leaving other serialized article content intact.
+- `mvn -f pom.xml -DskipTests compile` succeeded with Java 8 release settings
+  on OpenJDK 17. No JUnit suite or v0.6.0 oracle comparison was run, and no
+  v0.6-specific Java regression fixture has been added.
+- The Java artifact remains `0.5.0`; the compatibility source remains Node
+  v0.4.0. The pending v0.5.0 image-pipeline work and full parity gates remain
+  separate follow-up items.
+
 ## 2026-10-23 — Initial source inventory
 
 - Compared upstream `miku-md2html` v0.3.5, commit
@@ -111,3 +127,111 @@
   `0.3.6` JAR passed packaged-runtime smoke on OpenJDK 17 and reports `0.3.6`.
 - The Node oracle remains 4/5 exact-output cases. Changes remain unstaged; no
   commit, tag, push, or Release was created.
+
+## 2026-11-17 — Node v0.5.0 image checks and output protection
+
+- Compared 27 pinned Node v0.5.0 image cases against Java. Image attributes,
+  diagnostic codes/messages/details/source ranges, and image accounting match.
+  Full HTML hashes and byte counts are not compared because the Java renderer
+  includes the selective Node v0.6.0 whitespace update.
+- Fixed embed-mode local-file failures to emit Node-compatible warnings and
+  omit the image. Matched the Node SVG event-handler diagnostic message and
+  unsupported-attribute classification.
+- Added source spans from Flexmark image nodes and used tracked jsoup source
+  ranges for raw `img` tags, so image diagnostics point to their original
+  markup and include end positions.
+- Added independent image-reference tracking. A malformed-front-matter scan
+  records image paths without calling asset describe/read, and incomplete scans
+  prevent failure-report publication. Forced HTML output and report hard-link
+  collisions preserve the referenced image bytes.
+- `mvn -f pom.xml test` passes all 52 JUnit tests; `git diff --check` passes.
+  Java artifact version remains `0.5.0`; no commit or push was made.
+
+## 2026-11-17 — Node v0.6.0 renderer regressions
+
+- Added four focused Java regressions for the Node v0.6.0 TOC placement and
+  structural-whitespace behavior. They cover leading-H1 TOC placement,
+  empty article boundaries, whitespace after removed comments/scripts, nested
+  containers, and code text.
+- The regression cases exposed an extra trailing newline caused by a synthetic
+  parser sentinel. The Java output now retains both template boundary newlines
+  for empty articles and omits the synthetic trailing newline after rendered
+  blocks.
+- The old v0.4.0 packaged comparison now passes three of five cases; the other
+  two differ at TOC placement. The 27-case v0.5.0 image comparison passes.
+- `mvn -f pom.xml package` passes all 56 JUnit tests; the packaged runtime
+  smoke check and `git diff --check` pass. Full v0.6.0 HTML oracle comparison
+  remains pending. Java artifact version remains `0.5.0`; no commit or push was
+  made.
+
+## 2026-11-17 — Generated-table whitespace investigation and plan
+
+- Compared 18 minimal inputs against the clean Node v0.6.0 checkout and the
+  current packaged Java JAR. Every conversion succeeded with no diagnostics.
+  The blank-line difference occurs before Markdown-generated tables with or
+  without reference definitions, including quoted and loose-list contexts.
+  Ordinary paragraph spacing and a compact raw HTML table match.
+- Traced Node's intermediate trees: `remark-rehype` generates formatting LF
+  nodes within tables, `rehype-raw` moves them before the table, and the final
+  renderer limits block-boundary runs to two LF. Java currently deletes the
+  internal table whitespace. The earlier reference-definition cause was an
+  unconfirmed inference and is corrected by this experiment.
+- Recorded the bounded implementation and fixture plan in
+  [generated-table-whitespace-plan.md](generated-table-whitespace-plan.md).
+  A list item with no blank line before the table has a separate table
+  recognition difference and remains a parser follow-up.
+- This change records the plan and corrects documentation; runtime code and
+  tracked test fixtures have not been changed. General maintenance uplift was
+  skipped because the request is limited to this whitespace plan.
+
+## 2026-11-17 — Luna implementation handoff plan
+
+- Expanded [the generated-table whitespace plan](generated-table-whitespace-plan.md)
+  into L00–L06 with concrete file ownership, capture provenance, fixture IDs,
+  comparison scopes, and acceptance checks.
+- Specified removal of table-only internal attributes before the diagnostic
+  HTML parse, followed by generated-table spacing after sanitization. This
+  prevents the new markers and LF from shifting tracked diagnostic coordinates.
+  The required jsoup attribute-range APIs exist in the current packaged JAR;
+  actual integration remains an implementation task.
+- The user requested planning only in this turn. No product code, tests,
+  fixtures, scripts, dependencies, or version files were changed or executed
+  as implementation. The existing uncommitted investigation documents are
+  preserved for the later implementation turn.
+
+## 2026-11-18 — Generated-table whitespace implementation
+
+- Completed L00–L06 from the [generated-table whitespace plan](generated-table-whitespace-plan.md).
+  L00 used branch `devel-tiga1024vfh`, HEAD `d1bdb7bdea8d6bba3fa45e673dd4a59a6ff6a338`,
+  a freshly packaged `0.5.0` JAR (`f24ebdc...0824cd`), 56 passing tests,
+  passing packaged smoke, and the existing Node v0.4.0 comparator result of 3/5.
+- Added per-conversion `TableBlock` markers and
+  `GeneratedTableWhitespace`. It removes only registered marker bytes before
+  the diagnostic jsoup parse, translates table offsets after removal, then
+  adjusts whitespace after sanitation. Table structure determines transferred
+  LF counts when an inline element precedes a table; block boundaries continue
+  through the existing two-LF limiter.
+- Captured 33 fixed Node v0.6.0 cases with the pinned runtime. All 24 `exact`
+  cases match full HTML bytes, metadata, diagnostics, stats, and `htmlBytes`.
+  Seven `regression` cases document narrow pre-existing differences: empty
+  `tbody`, fenced-code warning, raw image/link diagnostic coordinates, raw
+  unsupported-attribute wording/source end, and a one-LF TOC/article boundary.
+  Two `known-difference` cases retain no-blank-line list recognition and the
+  old `commonmark-gfm` parser/TOC fixture.
+- The 63-test Maven package and packaged-runtime smoke pass. The old Node v0.4.0
+  comparator remains 3/5; its two TOC cases are still outside this task. The
+  GFM inline-code pipe difference and broader v0.6.0 parity remain open.
+- At completion of the generated-table whitespace implementation, the Java
+  artifact was still `0.5.0`; compatibility baseline remained Node v0.4.0.
+  That implementation did not change dependencies, public API, version, tag,
+  commit, push, or Release state.
+
+## 2026-11-18 — Java artifact version aligned to upstream v0.6.0
+
+- By explicit decision, changed the Java artifact and CLI-reported version from
+  `0.5.0` to `0.6.0`, matching the upstream release number.
+- This is version-number alignment only. The compatibility baseline remains
+  Node v0.4.0; the focused v0.6.0 renderer coverage does not establish full
+  Node v0.6.0 parity, and the Node v0.5.0 image-pipeline follow-up remains open.
+- No compatibility baseline, API, dependency, tag, or published Release was
+  changed by this version update.

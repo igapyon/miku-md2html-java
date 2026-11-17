@@ -16,6 +16,16 @@ public final class HtmlDocumentRenderer {
     }
 
     public String render(String articleHtml, String toc, String title, String lang, String description, String imageMode) {
+        if (articleHtml == null) articleHtml = "";
+        int headingEnd = toc != null && !toc.isEmpty() ? HtmlStructuralWhitespace.firstTopLevelH1End(articleHtml) : -1;
+        boolean tocAfterH1 = headingEnd >= 0;
+        String articleContent = articleHtml;
+        if (tocAfterH1) {
+            articleContent = articleHtml.substring(0, headingEnd) + "\n\n" + toc + "\n\n" + articleHtml.substring(headingEnd);
+            toc = "";
+        }
+        articleContent = HtmlStructuralWhitespace.normalizeArticle(articleContent);
+
         String css = readResource("theme.css").trim();
         String script = "\n" + readResource("viewer.js").trim() + "\n";
         css = css.replaceAll("(?i)</style", "<\\\\/style");
@@ -32,8 +42,7 @@ public final class HtmlDocumentRenderer {
         html.append("<title>").append(HtmlEscape.text(title)).append("</title>\n<style>\n").append(css)
                 .append("\n</style>\n</head>\n<body>\n<main>\n");
         if (toc != null && !toc.isEmpty()) html.append(toc).append('\n');
-        html.append("<article>\n").append(articleHtml);
-        if (articleHtml == null || !articleHtml.endsWith("\n")) html.append('\n');
+        html.append("<article>").append(articleContent);
         html.append("</article>\n</main>\n<script>")
                 .append(script).append("</script>\n</body>\n</html>\n");
         return html.toString();

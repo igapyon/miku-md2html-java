@@ -14,11 +14,16 @@
 
 - Compatibility baseline: Node `miku-md2html` v0.4.0, commit
   `b18a6e390425bd0e15387a2d608980a42a1809e9`.
+- Latest release reviewed: Node `miku-md2html` v0.6.0, commit
+  `4a0918713f8b94fffe8d447e809800a2e096cb84`. The leading-H1 TOC placement and
+  structural blank-line rules were selectively ported; v0.5.0 image-pipeline
+  follow-up work and full v0.6.0 parity remain open.
 - Pinned Node runtime bundle SHA-256:
   `4c5aaeac024b5c31c003e2df40d66d8e8d2e5ad4a4fbe4c2222619c83290f16c`.
 - Local read-only checkout used for source and oracle work: `../miku-md2html`.
-- Product artifact version is `0.5.0`; compatibility baseline and implementation
-  status are tracked separately in [upstream snapshot](upstream-snapshot.md).
+- Product artifact version is `0.6.0`, aligned to the upstream v0.6.0 version
+  number only. The compatibility baseline remains Node v0.4.0; this does not
+  claim full v0.6.0 parity. See [upstream snapshot](upstream-snapshot.md).
 - Sister Java references checked: `../miku-md2docx-java` and
   `../miku-md2pptx-java`. They inform the single-module runtime, testable CLI,
   Java 8 floor, fat JAR, source artifact, and release workflow shape. Product
@@ -31,16 +36,23 @@
 ```sh
 mvn -f pom.xml test
 mvn -f pom.xml package
-java -jar target/miku-md2html-java-0.5.0.jar --version
-bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.5.0.jar 0.5.0
+java -jar target/miku-md2html-java-0.6.0.jar --version
+bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.6.0.jar 0.6.0
 node scripts/capture-node-parity.mjs
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.5.0.jar
+node scripts/capture-node-table-whitespace-parity.mjs --upstream ../miku-md2html
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.6.0.jar
 ```
 
 The Node capture/comparison scripts are maintainer tools. Regular JUnit tests
 use tracked fixtures and do not require Node. The packaged runtime smoke copies
 the JAR to a fresh temporary directory and runs it without the source tree or
-dependency classpath.
+dependency classpath. The table-whitespace capture is pinned to Node v0.6.0
+and regenerates only the 33 fixed cases under
+`src/test/resources/parity/v0.6.0/table-whitespace/`; it is a focused oracle,
+not a full compatibility claim.
+
+The v0.4.0 comparator passes `--image-mode embed` explicitly to preserve that
+baseline's image default; the Java CLI default is `reference`.
 
 ## Runtime Dependencies
 

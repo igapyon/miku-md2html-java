@@ -49,9 +49,13 @@ public final class MarkdownConverter {
         FrontMatter front = new FrontMatterParser().parse(markdown, diagnostics);
         String lang = langOverride != null ? langOverride : front.getLang() != null ? front.getLang() : "ja";
         String description = front.getDescription();
-        if (!front.isValid()) return failure("Untitled", lang, description, diagnostics, emptyStats());
+        if (!front.isValid()) {
+            scanImageReferences(front, options.getAssets(), maxBytes, imageMode);
+            return failure("Untitled", lang, description, diagnostics, emptyStats());
+        }
         ImageEmbeddingSession images = new ImageEmbeddingSession(options.getAssets(), diagnostics, maxBytes, imageMode);
         MarkdownDocument document = new MarkdownParser(diagnostics, front.getLineOffset(), images).parse(front.getBody());
+        images.completeReferenceScan();
         List<DocumentStructure.Heading> headings = document.getHeadings();
         String firstH1 = null;
         for (DocumentStructure.Heading heading : headings) {
@@ -78,6 +82,18 @@ public final class MarkdownConverter {
     }
 
     private static String trimOrNull(String value) { return value == null ? null : value.trim(); }
+    private static void scanImageReferences(FrontMatter front, AssetResolver assets, long maxBytes, String imageMode) {
+        if (!(assets instanceof ImageReferenceTracker)) return;
+        ImageEmbeddingSession scanner = new ImageEmbeddingSession(assets, new ArrayList<Diagnostic>(), maxBytes,
+                imageMode, true);
+        try {
+            new MarkdownParser(new ArrayList<Diagnostic>(), front.getLineOffset(), scanner).parse(front.getBody());
+            scanner.completeReferenceScan();
+        } catch (RuntimeException ignored) {
+            // An incomplete scan prevents CLI failure reports from being published.
+        }
+    }
+
     private static ConversionStats emptyStats() { return new ConversionStats(0, 0, 0, 0L, 0L, 0L); }
     private static ConversionStats stats(int headings, ImageEmbeddingSession images, long htmlBytes) {
         return new ConversionStats(headings, images.getOccurrences(), images.getUniqueAssets(),
