@@ -14,8 +14,18 @@ public final class Diagnostics {
     }
 
     public static void add(List<Diagnostic> diagnostics, String severity, String code, String message,
+            String label, SourcePosition start, SourcePosition end) {
+        diagnostics.add(new Diagnostic(severity, code, message, label, start, end, null));
+    }
+
+    public static void add(List<Diagnostic> diagnostics, String severity, String code, String message,
             String label, SourcePosition start, java.util.Map<String, Object> details) {
         diagnostics.add(new Diagnostic(severity, code, message, label, start, details));
+    }
+
+    public static void add(List<Diagnostic> diagnostics, String severity, String code, String message,
+            String label, SourcePosition start, SourcePosition end, java.util.Map<String, Object> details) {
+        diagnostics.add(new Diagnostic(severity, code, message, label, start, end, details));
     }
 
     public static boolean hasErrors(List<Diagnostic> diagnostics) {

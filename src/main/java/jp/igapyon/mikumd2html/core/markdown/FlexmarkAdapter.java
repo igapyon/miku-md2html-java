@@ -4,16 +4,24 @@ import com.vladsch.flexmark.ext.autolink.AutolinkExtension;
 import com.vladsch.flexmark.ext.footnotes.FootnoteExtension;
 import com.vladsch.flexmark.ext.footnotes.Footnote;
 import com.vladsch.flexmark.ext.footnotes.FootnoteBlock;
+import com.vladsch.flexmark.ast.Image;
+import com.vladsch.flexmark.ast.ImageRef;
 import com.vladsch.flexmark.ast.Link;
+import com.vladsch.flexmark.ext.tables.TableBlock;
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension;
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension;
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.ast.HtmlBlock;
 import com.vladsch.flexmark.ast.HtmlInline;
+import com.vladsch.flexmark.html.AttributeProvider;
+import com.vladsch.flexmark.html.IndependentAttributeProviderFactory;
 import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.html.renderer.AttributablePart;
+import com.vladsch.flexmark.html.renderer.LinkResolverContext;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
 import com.vladsch.flexmark.util.data.MutableDataSet;
+import com.vladsch.flexmark.util.html.MutableAttributes;
 import com.vladsch.flexmark.util.misc.Extension;
 import jp.igapyon.mikumd2html.core.ArticleSanitizer;
 import jp.igapyon.mikumd2html.core.Diagnostic;
@@ -52,6 +60,7 @@ public final class FlexmarkAdapter {
     private final List<Diagnostic> diagnostics;
     private final int lineOffset;
     private final ImageEmbeddingSession images;
+    private ImageSourceIndex imageSourceIndex;
     private final Map<String, Integer> diagnosedUnsafeLinks = new LinkedHashMap<String, Integer>();
 
     public FlexmarkAdapter(List<Diagnostic> diagnostics, int lineOffset, ImageEmbeddingSession images) {
@@ -61,6 +70,8 @@ public final class FlexmarkAdapter {
     }
 
     public MarkdownDocument parse(String markdown) {
+        imageSourceIndex = new ImageSourceIndex(markdown, lineOffset);
+        final GeneratedTableWhitespace generatedTableWhitespace = new GeneratedTableWhitespace();
         MutableDataSet options = new MutableDataSet();
         options.set(Parser.EXTENSIONS, Arrays.<Extension>asList(
                 TablesExtension.create(),
@@ -77,12 +88,27 @@ public final class FlexmarkAdapter {
         Node tree = parser.parse(markdown);
         collectUnsafeLinks(tree);
         Map<Integer, String> footnoteLabels = collectFootnoteLabels(tree);
-        HtmlRenderer renderer = HtmlRenderer.builder(options).build();
+        HtmlRenderer renderer = HtmlRenderer.builder(options).attributeProviderFactory(new IndependentAttributeProviderFactory() {
+            @Override public AttributeProvider apply(LinkResolverContext context) {
+                return new AttributeProvider() {
+                    @Override public void setAttributes(Node node, AttributablePart part, MutableAttributes attributes) {
+                        if (!AttributablePart.NODE.equals(part) && !AttributablePart.LINK.equals(part)) return;
+                        if (node instanceof TableBlock && AttributablePart.NODE.equals(part)) {
+                            attributes.addValue(generatedTableWhitespace.getAttributeName(), generatedTableWhitespace.register(node));
+                            return;
+                        }
+                        if (!(node instanceof Image) && !(node instanceof ImageRef)) return;
+                        String id = imageSourceIndex.register(node);
+                        if (id != null) attributes.addValue(imageSourceIndex.getAttributeName(), id);
+                    }
+                };
+            }
+        }).build();
         String html = renderer.render(tree);
         collectSuppressedActiveHtml(tree, html);
         html = adaptFootnotes(html, footnoteLabels, tree);
         html = normalizeGeneratedHtml(html);
-        html = sanitizeHtmlFragment(html);
+        html = sanitizeHtmlFragment(generatedTableWhitespace.prepare(html));
         List<DocumentStructure.Heading> headings = new ArrayList<DocumentStructure.Heading>();
         String article = assignHeadingIds(html, headings);
         return new MarkdownDocument(article, headings);
@@ -121,14 +147,17 @@ public final class FlexmarkAdapter {
         return value == null ? 0 : value;
     }
 
-    private String sanitizeHtmlFragment(String html) {
+    private String sanitizeHtmlFragment(GeneratedTableWhitespace.PreparedHtml prepared) {
+        String html = prepared.getHtml();
         org.jsoup.parser.Parser parser = org.jsoup.parser.Parser.htmlParser().setTrackPosition(true);
         Document document = Document.createShell("");
         List<org.jsoup.nodes.Node> fragment = parser.parseFragmentInput(html, document.body(), "");
+        java.util.Map<Element, Integer> generatedTables = prepared.identify(fragment);
         for (org.jsoup.nodes.Node node : fragment) document.body().appendChild(node);
         document.outputSettings().prettyPrint(false).syntax(Document.OutputSettings.Syntax.html)
                 .escapeMode(org.jsoup.nodes.Entities.EscapeMode.base);
         sanitizeChildren(document.body());
+        GeneratedTableWhitespace.addRequiredWhitespace(generatedTables);
         String sanitized = document.body().html();
         sanitized = sanitized.replaceAll("(?i)(<input\\b[^>]*>)&nbsp;", "$1 ");
         return sanitized.replace("&amp;", "&#x26;");
@@ -162,9 +191,10 @@ public final class FlexmarkAdapter {
                 element.unwrap();
                 continue;
             }
+            ImageSourceIndex.Span imageSpan = "img".equals(tag) ? imageSourceIndex.consume(element) : null;
             sanitizeAttributes(element);
             if ("img".equals(tag)) {
-                replaceImage(element);
+                replaceImage(element, imageSpan);
                 continue;
             }
             sanitizeChildren(element);
@@ -235,16 +265,18 @@ public final class FlexmarkAdapter {
         }
     }
 
-    private void replaceImage(Element element) {
+    private void replaceImage(Element element, ImageSourceIndex.Span imageSpan) {
+        SourcePosition start = imageSpan == null ? sourcePosition(element) : imageSpan.start;
+        SourcePosition end = imageSpan == null ? sourceEndPosition(element) : imageSpan.end;
         String src = element.attr("src");
         if (src.isEmpty()) {
-            Diagnostics.add(diagnostics, "error", "E_IMAGE_URI", "Image source is missing.", "markdown", sourcePosition(element));
+            Diagnostics.add(diagnostics, "error", "E_IMAGE_URI", "Image source is missing.", "markdown", start, end);
             element.remove();
             return;
         }
         String alt = element.hasAttr("alt") ? element.attr("alt") : "";
         String title = element.hasAttr("title") ? element.attr("title") : null;
-        String imageHtml = images.renderImage(alt, src, title, line(sourcePosition(element)), column(sourcePosition(element)));
+        String imageHtml = images.renderImage(alt, src, title, start, end);
         List<org.jsoup.nodes.Node> replacement = org.jsoup.parser.Parser.parseFragment(imageHtml, element.parent(), "");
         if (replacement.isEmpty() || !(replacement.get(0) instanceof Element)) {
             element.removeAttr("src");
@@ -270,6 +302,11 @@ public final class FlexmarkAdapter {
         org.jsoup.nodes.Range range = node.sourceRange();
         if (range == null || !range.isTracked() || !range.start().isTracked()) return null;
         return new SourcePosition(Math.max(1, lineOffset + range.start().lineNumber()), Math.max(1, range.start().columnNumber()));
+    }
+    private SourcePosition sourceEndPosition(org.jsoup.nodes.Node node) {
+        org.jsoup.nodes.Range range = node.sourceRange();
+        if (range == null || !range.isTracked() || !range.end().isTracked()) return null;
+        return new SourcePosition(Math.max(1, lineOffset + range.end().lineNumber()), Math.max(1, range.end().columnNumber()));
     }
     private static int line(SourcePosition p) { return p == null ? 1 : p.getLine(); }
     private static int column(SourcePosition p) { return p == null ? 1 : p.getColumn(); }

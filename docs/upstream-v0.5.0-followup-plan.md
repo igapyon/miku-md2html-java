@@ -5,6 +5,12 @@
 計画作成時には本書とTODOへのリンクだけを追加し、製品、テスト、script、
 workflow、依存、バージョン、互換性基準は変更していなかった。
 
+2026-11-17進捗: 画像ケース27件の比較、画像source index、local reference tracking、
+基本のHTML/report衝突試験を追加した。P00〜P10全体は未完了で、互換性基準はv0.4.0のまま。
+
+2026-11-18追記: 別途明示された決定によりJava artifactの版番号をNode v0.6.0と同じ`0.6.0`へ整合した。
+これは版番号の整合であり、Node v0.5.0またはv0.6.0との全面互換を示さない。互換性基準はv0.4.0のまま。
+
 ## 1. 固定する入力と到達点
 
 | 項目 | 固定値 |
@@ -19,7 +25,8 @@ workflow、依存、バージョン、互換性基準は変更していなかっ
 | CLI SHA-256 | `c5af81eccba1ecddc348533e40517a2dbcfa92af552b6d7a02616421fcbc9b78` |
 | 調査に使ったNode checkout | `../miku-md2html`。上記commitと一致、tracked変更なし。両bundleのhashも上記と一致 |
 | 調査時Java HEAD | `6f36609f755cd85e1abab215d1ba875600730865` |
-| Java artifact / 現在の互換性基準 | `0.5.0` / Node `v0.4.0`、`b18a6e390425bd0e15387a2d608980a42a1809e9` |
+| 計画作成時のJava artifact / 現在の互換性基準 | `0.5.0` / Node `v0.4.0`、`b18a6e390425bd0e15387a2d608980a42a1809e9` |
+| 現在のJava artifact version | `0.6.0`。上流との版番号整合のみで、全面互換を示さない |
 | Java公開入口 | `jp.igapyon.mikumd2html.core.MikuMd2htmlCore.convertMarkdown` |
 | CLI | `jp.igapyon.mikumd2html.cli.MikuMd2htmlCli` |
 | 維持する配布条件 | Java 8 source/binary/runtime、Maven、JUnit Jupiter、単一fat JAR、sources JAR |
@@ -29,10 +36,11 @@ CSP、出力保護をJavaのCoreとCLIで再現すること。
 下記の合格条件を満たした後に、互換性の参照先をv0.5.0へ進める。
 **参照先の更新は完全互換の宣言ではない。**
 
-Java artifactの版はNode版とは独立しており、現在は`0.5.0`。
-この版番号はNode `v0.5.0`相当の実装完了を示すものではない。互換性基準はNode
-`v0.4.0`のままとし、本計画の合格条件とGitHub Actions workflowの検証が完了した後に
-`v0.5.0`へ更新する。Node版をJava版へそのまま転記しない。
+Java artifactの版はNode版とは独立している。計画作成時は`0.5.0`で、2026-11-18に
+別途の明示決定で`0.6.0`へ整合した。この版番号はNode `v0.5.0`または`v0.6.0`相当の
+実装完了を示すものではない。互換性基準はNode `v0.4.0`のままであり、本計画の合格条件と
+GitHub Actions workflowの検証後に互換性参照先を進める。Node版をJava版へ転記しただけで
+互換性が成立したとは扱わない。
 
 ## 2. 調査結果と今回の範囲
 
@@ -148,6 +156,10 @@ resolverではI/O由来のE系を保ち、W系への変換はCoreに置く。
   入力data URLとinline SVGも両モードでその場で検証・埋め込みする。
 - `InlineMarkdownParser`など残る内部call siteをコンパイル・動作上確認する。
   公開Coreから使われるFlexmark経路と異なる画像規則を二重に実装しない。
+
+優先順位メモ（2026-11-17）: 出力サイズを画像read前に推定する処理は当面延期する。
+最終HTMLの上限判定は維持する。延期中は画像出力・warning・衝突保護の確認を先に進めるが、
+この項目を含む全受け入れ条件が終わるまではNode v0.5.0全体との互換を宣言しない。
 
 ### 3.4 画像診断のsource位置
 
@@ -307,7 +319,7 @@ Nodeの`core/image-references.ts`と`NodeAssetResolver`の役割に対応する�
 | P05 | P04 | `core.ImageInspector`のsniff共有、`ImageEmbeddingSession`のreference・warning・cache・stats | 第3.5/4/6節、下の画像試験が合格。SVG errorをwarningへ落とさない |
 | P06 | P05 | 新規`core.ImageReferenceTracker`、Flexmarkのscan、resolver追跡、`cli.FileConversion`の衝突/report gate、試験用convert seam | 第5節。画像が途中で消えても後続report衝突を見落とさない。内部失敗exit 3 |
 | P07 | P06 | `core.HtmlDocumentRenderer/MarkdownConverter`、`cli.FileConversion` report writer | mode別CSP、全統計、成功/failure report。全JVMから同じ意味の出力 |
-| P08 | P07 | 新規/既存JUnit、両parity scripts、`docs/upstream-*-mapping.md` | v0.5 focused oracle全件一致。旧5件はembed指定で既存4件一致と既知1件だけの差分を維持 |
+| P08 | P07 | 新規/既存JUnit、両parity scripts、`docs/upstream-*-mapping.md` | v0.5 image oracle 27件で画像属性/diagnostics/source範囲/stats一致。全HTMLはNode v0.6 oracleで確認。旧v0.4比較のrenderer差はv0.6 oracleで分類 |
 | P09 | P08 | `scripts/smoke-packaged-runtime.sh`、`.github/workflows/ci.yml`、`docs/github-actions-plan.md` | final JARでdefault reference/explicit embedを検査。Java8/25同一JAR smokeとWindows path検査を定義 |
 | P10 | P09 | README/CLI/development/dependency-decisions/snapshot/remaining/log、旧計画進捗、TODO | 実装/検証事実を反映してv0.5.0参照を記録。残る旧差分を明記し、未検証を完了扱いしない |
 
@@ -327,11 +339,12 @@ git -C ../miku-md2html status --short --branch
 git -C ../miku-md2html rev-parse HEAD
 shasum -a 256 ../miku-md2html/bundle/miku-md2html-runtime.mjs ../miku-md2html/bundle/miku-md2html.mjs
 mvn -B -ntp package
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.5.0.jar
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.6.0.jar
 ```
 
-旧比較は文書上4/5一致、`commonmark-gfm`がHTML/関連htmlBytesで不一致。
-これは今回まだ再実行していない記録値なのでP00で確認する。
+旧比較は明示embedで再実行し、3/5が完全一致した。残り2件はTOC位置の差があり、
+選択的なv0.6 renderer更新が影響している。Node v0.6 oracleで差を確定するまで完全な期待差とは扱わない。
+`commonmark-gfm`のpipe入りinline code表差分も残る。
 他の失敗があれば原因を記録・切り分けしてから進む。
 upstream HEAD/hashが違う場合はそのcheckoutを書き換えず、無視済み`workplace/`配下に
 固定commitの独立checkoutを用意する。新capture toolの`--upstream`へそのパスを渡す。
@@ -345,7 +358,7 @@ upstreamへcommit/reset/install/buildを行うことを前提にしない。
 
 ```sh
 node scripts/capture-node-v0.5.0-parity.mjs --upstream ../miku-md2html
-node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.5.0.jar
+node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.6.0.jar
 ```
 
 captureはNode22以上のmaintainer toolとし、HEAD、clean状態、runtime/CLI hash、
@@ -494,9 +507,9 @@ P09では新機能に必要な検査だけを加える。
 
 ```sh
 mvn -B -ntp package
-bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.5.0.jar 0.5.0
-node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.5.0.jar
-node scripts/compare-node-java.mjs target/miku-md2html-java-0.5.0.jar
+bash scripts/smoke-packaged-runtime.sh target/miku-md2html-java-0.6.0.jar 0.6.0
+node scripts/compare-node-v0.5.0-java.mjs target/miku-md2html-java-0.6.0.jar
+node scripts/compare-node-java.mjs target/miku-md2html-java-0.6.0.jar
 git diff --check
 git status --short
 ```

@@ -36,7 +36,7 @@ for (const testCase of cases) {
     const outputPath = join(work, 'output.html');
     const reportPath = join(work, 'report.json');
     await writeFile(inputPath, inputBytes);
-    const args = ['-jar', runtimeJar, inputPath, '--out', outputPath, '--report-json', reportPath];
+    const args = ['-jar', runtimeJar, inputPath, '--out', outputPath, '--report-json', reportPath, '--image-mode', 'embed'];
     if (testCase.options?.title) args.push('--title', testCase.options.title);
     if (testCase.options?.lang) args.push('--lang', testCase.options.lang);
     if (testCase.options?.toc === false) args.push('--no-toc');

@@ -226,9 +226,13 @@ public final class ImageInspector {
         NamedNodeMap attributes = element.getAttributes();
         for (int i = 0; i < attributes.getLength(); i++) {
             Node attribute = attributes.item(i);
-            String attr = attribute.getNodeName().toLowerCase(java.util.Locale.ROOT);
+            if ("http://www.w3.org/2000/xmlns/".equals(attribute.getNamespaceURI())) continue;
+            String attributeName = attribute.getNodeName();
+            String attr = attributeName.toLowerCase(java.util.Locale.ROOT);
             String value = attribute.getNodeValue().trim();
-            if (attr.startsWith("on") || "xml:base".equals(attr) || !SVG_ATTRIBUTES.contains(attr)) throw new AssetAccessException("E_SVG_UNSAFE", "SVG contains an unsupported or unsafe attribute: " + attr + ".");
+            if (attr.startsWith("on")) throw new AssetAccessException("E_SVG_UNSAFE", "SVG event handler attributes are unsafe.");
+            if ("xml:base".equals(attr)) throw new AssetAccessException("E_SVG_UNSAFE", "SVG xml:base is not supported.");
+            if (!SVG_ATTRIBUTES.contains(attr)) throw new AssetAccessException("E_SVG_UNSUPPORTED", "SVG attribute " + attributeName + " is not supported.");
             if ("href".equals(attr) || "xlink:href".equals(attr)) {
                 if (value.startsWith("#")) continue;
                 if (!"image".equals(normalizedName) && !"feimage".equals(normalizedName)) {
